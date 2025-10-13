@@ -9,7 +9,7 @@ const { sequelize } = require('../config/database');
 const SubscriptionUsage = sequelize.define(
   'SubscriptionUsage',
   {
-    usageId: {
+    id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -25,160 +25,90 @@ const SubscriptionUsage = sequelize.define(
       onDelete: 'CASCADE',
     },
     // Billing period
-    periodStart: {
+    billingPeriodStart: {
       type: DataTypes.DATE,
       allowNull: false,
+      field: 'billingPeriodStart',
     },
-    periodEnd: {
+    billingPeriodEnd: {
       type: DataTypes.DATE,
       allowNull: false,
+      field: 'billingPeriodEnd',
     },
     // Minutes usage
-    totalMinutesUsed: {
+    minutesIncluded: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
     },
-    includedMinutes: {
+    minutesUsed: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
     },
-    overageMinutes: {
+    minutesOverage: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
     },
-    overageCharges: {
-      type: DataTypes.DECIMAL(15, 2),
-      defaultValue: 0.0,
+    overageCost: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+      allowNull: false,
     },
-    // Calls
-    totalCalls: {
+    // Call types from migration
+    localCalls: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
     },
-    successfulCalls: {
+    stdCalls: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
     },
-    failedCalls: {
+    isdCalls: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
     },
-    // Toll-free numbers
-    tollFreeNumbersUsed: {
+    mobileCalls: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
-    },
-    tollFreeNumbersIncluded: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    tollFreeNumbersOverage: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    tollFreeNumbersCharges: {
-      type: DataTypes.DECIMAL(15, 2),
-      defaultValue: 0.0,
-    },
-    // Extensions
-    extensionsUsed: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    extensionsIncluded: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    extensionsOverage: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    extensionsCharges: {
-      type: DataTypes.DECIMAL(15, 2),
-      defaultValue: 0.0,
-    },
-    // Total charges
-    totalCharges: {
-      type: DataTypes.DECIMAL(15, 2),
-      defaultValue: 0.0,
-    },
-    // Status
-    isFinalized: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    finalizedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: false,
     },
     metadata: {
-      type: DataTypes.JSON,
-      defaultValue: {},
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
   },
   {
     tableName: 'subscription_usage',
     timestamps: true,
+    underscored: false,
     indexes: [
       { fields: ['subscriptionId'] },
-      { fields: ['periodStart', 'periodEnd'] },
-      { fields: ['isFinalized'] },
-      { fields: ['createdAt'] },
+      { fields: ['billingPeriodStart', 'billingPeriodEnd'] },
     ],
   }
 );
 
 // Instance methods
 SubscriptionUsage.prototype.addMinutesUsage = async function (minutes, perMinuteRate) {
-  this.totalMinutesUsed += minutes;
+  this.minutesUsed += minutes;
 
   // Calculate overage
-  if (this.totalMinutesUsed > this.includedMinutes) {
-    this.overageMinutes = this.totalMinutesUsed - this.includedMinutes;
-    this.overageCharges = parseFloat(this.overageMinutes) * parseFloat(perMinuteRate);
+  if (this.minutesUsed > this.minutesIncluded) {
+    this.minutesOverage = this.minutesUsed - this.minutesIncluded;
+    this.overageCost = parseFloat(this.minutesOverage) * parseFloat(perMinuteRate);
   }
 
-  this.totalCalls += 1;
-  this.successfulCalls += 1;
-  await this.recalculateTotalCharges();
   await this.save();
 };
 
-SubscriptionUsage.prototype.addTollFreeNumber = async function (chargePerNumber = 1) {
-  this.tollFreeNumbersUsed += 1;
-
-  if (this.tollFreeNumbersUsed > this.tollFreeNumbersIncluded) {
-    this.tollFreeNumbersOverage = this.tollFreeNumbersUsed - this.tollFreeNumbersIncluded;
-    this.tollFreeNumbersCharges = parseFloat(this.tollFreeNumbersOverage) * parseFloat(chargePerNumber);
-  }
-
-  await this.recalculateTotalCharges();
-  await this.save();
-};
-
-SubscriptionUsage.prototype.addExtension = async function (chargePerExtension = 1) {
-  this.extensionsUsed += 1;
-
-  if (this.extensionsUsed > this.extensionsIncluded) {
-    this.extensionsOverage = this.extensionsUsed - this.extensionsIncluded;
-    this.extensionsCharges = parseFloat(this.extensionsOverage) * parseFloat(chargePerExtension);
-  }
-
-  await this.recalculateTotalCharges();
-  await this.save();
-};
-
-SubscriptionUsage.prototype.recalculateTotalCharges = async function () {
-  this.totalCharges =
-    parseFloat(this.overageCharges) +
-    parseFloat(this.tollFreeNumbersCharges) +
-    parseFloat(this.extensionsCharges);
-};
-
-SubscriptionUsage.prototype.finalize = async function () {
-  this.isFinalized = true;
-  this.finalizedAt = new Date();
-  await this.save();
+SubscriptionUsage.prototype.getUsagePercentage = function () {
+  if (this.minutesIncluded === 0) return 0;
+  return (this.minutesUsed / this.minutesIncluded) * 100;
 };
 
 module.exports = SubscriptionUsage;

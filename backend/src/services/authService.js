@@ -132,22 +132,16 @@ class AuthService {
       ],
     });
 
-    // Log login attempt - Disabled: login_attempts table doesn't exist
+    // Log login attempt
     const logAttempt = async (success, reason = null) => {
-      // await LoginAttempt.create({
-      //   userId: user?.id,
-      //   email,
-      //   ipAddress,
-      //   userAgent,
-      //   deviceFingerprint,
-      //   status: success ? 'success' : 'failed',
-      //   failureReason: reason,
-      // });
-      logger.info(`Login attempt: ${success ? 'success' : 'failed'}`, {
+      await LoginAttempt.create({
         userId: user?.id,
         email,
-        reason,
         ipAddress,
+        userAgent,
+        deviceFingerprint,
+        status: success ? 'success' : 'failed',
+        failureReason: reason,
       });
     };
 
@@ -193,7 +187,16 @@ class AuthService {
     // Check MFA if enabled
     if (user.mfaEnabled) {
       if (!mfaCode) {
-        await logAttempt(false, 'mfa_required');
+        // Log as mfa_required status
+        await LoginAttempt.create({
+          userId: user.id,
+          email,
+          ipAddress,
+          userAgent,
+          deviceFingerprint,
+          status: 'mfa_required',
+          failureReason: 'mfa_required',
+        });
         return {
           requiresMfa: true,
           message: 'MFA code required',
@@ -209,7 +212,16 @@ class AuthService {
 
       if (!isMfaValid) {
         await user.incrementFailedLoginAttempts();
-        await logAttempt(false, 'invalid_mfa');
+        // Log as mfa_failed status
+        await LoginAttempt.create({
+          userId: user.id,
+          email,
+          ipAddress,
+          userAgent,
+          deviceFingerprint,
+          status: 'mfa_failed',
+          failureReason: 'invalid_mfa',
+        });
         throw new AuthenticationError('Invalid MFA code');
       }
     }

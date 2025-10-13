@@ -35,6 +35,7 @@ const { metricsMiddleware, updateAllMetrics } = require('./services/monitoringSe
 const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
 const subscriptionRoutes = require('./routes/subscriptions');
+const ratePlanRoutes = require('./routes/ratePlans');
 const paymentRoutes = require('./routes/payments');
 const cdrRoutes = require('./routes/cdrs');
 const invoiceRoutes = require('./routes/invoices');
@@ -151,6 +152,7 @@ app.use('/', monitoringRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/rate-plans', ratePlanRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cdrs', cdrRoutes);
 app.use('/api/invoices', invoiceRoutes);

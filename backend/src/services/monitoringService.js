@@ -204,13 +204,13 @@ const updateActiveSubscriptions = async () => {
     const { Subscription, RatePlan } = require('../models');
     const subscriptions = await Subscription.findAll({
       where: { status: 'active' },
-      include: [{ model: RatePlan, attributes: ['name'] }],
+      include: [{ model: RatePlan, as: 'plan', attributes: ['planName'] }],
     });
 
     // Group by plan
     const planCounts = {};
     subscriptions.forEach((sub) => {
-      const planName = sub.ratePlan?.name || 'unknown';
+      const planName = sub.ratePlan?.planName || 'unknown';
       planCounts[planName] = (planCounts[planName] || 0) + 1;
     });
 
@@ -261,9 +261,16 @@ const updateDBPoolMetrics = (sequelize) => {
   try {
     const pool = sequelize.connectionManager.pool;
     if (pool) {
-      dbConnectionPool.set({ status: 'active' }, pool.size);
-      dbConnectionPool.set({ status: 'idle' }, pool.available);
-      dbConnectionPool.set({ status: 'waiting' }, pool.pending);
+      // Only set metrics if values are valid numbers
+      if (typeof pool.size === 'number') {
+        dbConnectionPool.set({ status: 'active' }, pool.size);
+      }
+      if (typeof pool.available === 'number') {
+        dbConnectionPool.set({ status: 'idle' }, pool.available);
+      }
+      if (typeof pool.pending === 'number') {
+        dbConnectionPool.set({ status: 'waiting' }, pool.pending);
+      }
     }
   } catch (error) {
     logger.error('Failed to update DB pool metrics', { error: error.message });

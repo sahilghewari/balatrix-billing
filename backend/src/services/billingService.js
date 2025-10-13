@@ -38,7 +38,7 @@ class BillingService {
       const subscription = await Subscription.findByPk(subscriptionId, {
         include: [
           { model: Customer, as: 'customer' },
-          { model: RatePlan, as: 'ratePlan' },
+          { model: RatePlan, as: 'plan' },
           {
             model: SubscriptionUsage,
             as: 'usageRecords',
@@ -210,7 +210,7 @@ class BillingService {
             model: Subscription,
             as: 'subscriptions',
             where: { status: 'active' },
-            include: [{ model: RatePlan, as: 'ratePlan' }],
+            include: [{ model: RatePlan, as: 'plan' }],
           },
         ],
         transaction,

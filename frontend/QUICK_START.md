@@ -1,394 +1,285 @@
-# 🚀 QUICK START GUIDE - Balatrix Billing Dashboard
+# Quick Start Guide - Balatrix Billing Frontend
 
-## Development Server is Running!
+## 🚀 Quick Start (5 Minutes)
 
-Your app is now live at: **http://localhost:3000**
+### Prerequisites
+- Node.js 18+ installed
+- Backend running on http://localhost:3000
+- PostgreSQL database with seeders run
 
----
-
-## ✅ What's Working Right Now
-
-1. **Login Page** - Visit http://localhost:3000 (you'll be redirected to `/login`)
-2. **Responsive Design** - Try resizing your browser or opening on mobile
-3. **Theme Toggle** - Light/dark mode support (though login page doesn't show toggle yet)
-4. **UI Components** - All design system components are ready to use
-
----
-
-## 🎯 Quick Test
-
-### Test the Login UI
-
-1. Open http://localhost:3000
-2. You'll see the login page
-3. Try entering an email and password
-4. Click "Sign In" (will show error - no backend yet)
-
-### Test Components
-
-You can test components by temporarily adding them to the Dashboard or Login page:
-
-```javascript
-import { Button, Card, Badge, Alert } from '@components/ui';
-
-// Add to your component
-<div className="p-4 space-y-4">
-  <Button variant="primary">Primary Button</Button>
-  <Button variant="outline">Outline Button</Button>
-  <Badge variant="success">Success</Badge>
-  <Alert variant="info">This is an info alert</Alert>
-</div>
-```
-
----
-
-## 📝 Next Immediate Tasks
-
-### Option 1: Build Dashboard with Real Data (Recommended)
-
-**File**: `src/pages/dashboard/Dashboard.jsx`
-
-1. Create TanStack Query hooks for data fetching
-2. Replace mock data with real API calls
-3. Add error and loading states
-4. Implement charts with Recharts
-
-**Example**:
-```javascript
-// src/hooks/useDashboard.js
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@services/api';
-
-export const useDashboardMetrics = () => {
-  return useQuery({
-    queryKey: ['dashboard', 'metrics'],
-    queryFn: async () => {
-      const response = await api.get('/dashboard/metrics');
-      return response.data;
-    },
-  });
-};
-
-// Then use in Dashboard.jsx
-const { data, isLoading, error } = useDashboardMetrics();
-```
-
-### Option 2: Build Subscription Pages
-
-**Files to Create**:
-- `src/pages/subscription/Plans.jsx`
-- `src/components/features/subscription/PlanComparison.jsx`
-
-### Option 3: Build Billing Pages
-
-**Files to Create**:
-- `src/pages/billing/Invoices.jsx`
-- `src/components/features/billing/InvoiceTable.jsx`
-
----
-
-## 🔧 Common Development Tasks
-
-### Adding a New Page
-
-1. **Create page component**:
-```javascript
-// src/pages/subscription/Plans.jsx
-export const Plans = () => {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold">Subscription Plans</h1>
-      {/* Your content */}
-    </div>
-  );
-};
-```
-
-2. **Add route** in `src/App.jsx`:
-```javascript
-import Plans from '@pages/subscription/Plans';
-
-// In Routes
-<Route
-  path="/subscriptions/plans"
-  element={
-    <ProtectedRoute>
-      <Layout>
-        <Plans />
-      </Layout>
-    </ProtectedRoute>
-  }
-/>
-```
-
-3. **Update Sidebar** in `src/components/layout/Sidebar.jsx` (already has the link)
-
-### Adding API Service
-
-1. **Create service function** in appropriate service file:
-```javascript
-// src/services/subscription.js
-export const subscriptionService = {
-  getPlans: async () => {
-    const response = await api.get('/subscriptions/plans');
-    return response.data;
-  },
-};
-```
-
-2. **Create hook** for component use:
-```javascript
-// src/hooks/useSubscription.js
-export const usePlans = () => {
-  return useQuery({
-    queryKey: ['plans'],
-    queryFn: subscriptionService.getPlans,
-  });
-};
-```
-
-3. **Use in component**:
-```javascript
-const { data: plans, isLoading } = usePlans();
-```
-
-### Creating a New Component
-
-1. **Create component file**:
-```javascript
-// src/components/features/billing/InvoiceCard.jsx
-export const InvoiceCard = ({ invoice }) => {
-  return (
-    <Card>
-      <h3>{invoice.number}</h3>
-      <p>{formatCurrency(invoice.amount)}</p>
-    </Card>
-  );
-};
-```
-
-2. **Import and use**:
-```javascript
-import { InvoiceCard } from '@components/features/billing/InvoiceCard';
-```
-
----
-
-## 🎨 Using the Design System
-
-### Buttons
-```javascript
-<Button variant="primary">Primary</Button>
-<Button variant="secondary">Secondary</Button>
-<Button variant="outline">Outline</Button>
-<Button variant="ghost">Ghost</Button>
-<Button variant="link">Link</Button>
-
-// With icons
-<Button leftIcon={<Plus className="h-4 w-4" />}>Add New</Button>
-<Button rightIcon={<ArrowRight className="h-4 w-4" />}>Next</Button>
-
-// Loading state
-<Button loading={isLoading}>Submit</Button>
-
-// Sizes
-<Button size="sm">Small</Button>
-<Button size="md">Medium</Button>
-<Button size="lg">Large</Button>
-```
-
-### Forms
-```javascript
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-
-function MyForm() {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(schema),
-  });
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Input
-        label="Email"
-        type="email"
-        error={errors.email?.message}
-        {...register('email')}
-      />
-      <Input
-        label="Password"
-        type="password"
-        error={errors.password?.message}
-        {...register('password')}
-      />
-      <Button type="submit">Submit</Button>
-    </form>
-  );
-}
-```
-
-### Cards & Layout
-```javascript
-<Card 
-  title="My Card"
-  subtitle="Card subtitle"
-  headerAction={<Button size="sm">Action</Button>}
-  footer={<p>Card footer</p>}
->
-  Card content goes here
-</Card>
-```
-
-### Data Display
-```javascript
-// Badges
-<Badge variant="success">Active</Badge>
-<Badge variant="warning">Pending</Badge>
-<Badge variant="error">Failed</Badge>
-
-// Avatars
-<Avatar src={user.avatar} name={user.name} size="md" />
-
-// Skeletons (loading states)
-<Skeleton variant="text" count={3} />
-<Skeleton variant="card" />
-```
-
----
-
-## 🔗 Useful Commands
-
+### Step 1: Install Dependencies
 ```bash
-# Development
-npm run dev              # Start dev server
-
-# Production
-npm run build           # Build for production
-npm run preview         # Preview production build
-
-# Linting
-npm run lint            # Run ESLint
-
-# Package Management
-npm install <package>   # Install new package
-npm update              # Update packages
+cd frontend
+npm install
 ```
 
----
-
-## 📚 Quick Reference
-
-### Import Aliases
-```javascript
-@              → src/
-@components    → src/components
-@pages         → src/pages
-@hooks         → src/hooks
-@services      → src/services
-@stores        → src/stores
-@utils         → src/utils
-@config        → src/config
-```
-
-### Key Files
-```
-src/
-├── App.jsx                      # Main router
-├── config/api.js                # API endpoints
-├── services/api.js              # Axios client
-├── stores/authStore.js          # Auth state
-├── components/ui/index.js       # UI components
-└── utils/
-    ├── constants.js             # App constants
-    ├── formatters.js            # Formatters
-    └── errors.js                # Error handlers
-```
-
-### Environment Variables
+### Step 2: Configure Environment
+Create `.env` file:
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api
-VITE_SOCKET_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:3000
 ```
 
----
-
-## 🐛 Common Issues & Fixes
-
-### ❌ Import errors with @ aliases
+### Step 3: Start Development Server
 ```bash
-# Restart dev server
-Ctrl+C
 npm run dev
 ```
 
-### ❌ TailwindCSS not working
-Check `src/main.jsx` has:
-```javascript
-import './styles/globals.css'
-import './index.css'
+Frontend will be available at: **http://localhost:5173**
+
+---
+
+## 📖 User Guide
+
+### Create an Account
+1. Visit http://localhost:5173/register
+2. Fill in username, email, password
+3. Click "Create Account"
+4. You'll be redirected to dashboard
+
+### Browse Plans
+1. Click "View Plans & Get Started" on dashboard
+   - Or visit http://localhost:5173/plans directly
+2. Toggle between Monthly/Quarterly/Annual billing
+3. Compare the 3 plans:
+   - **Starter**: ₹349/month - Perfect for small businesses
+   - **Professional**: ₹999/month - Most popular
+   - **Call Center**: ₹4,999/month - For high-volume operations
+
+### Select a Plan
+1. Click "Select Plan" on your preferred plan
+   - If not logged in, you'll be redirected to login
+2. Use the add-on selector to add extra toll-free numbers and extensions
+3. Review the price summary (including GST)
+4. Click "Proceed to Payment"
+
+### Complete Purchase
+1. Fill in customer information:
+   - **Required**: First Name, Phone, City, State
+   - **Optional**: Last Name, Company, Address, Postal Code, GST Number
+2. Review order summary
+3. Click "Pay ₹X,XXX" button
+4. Complete payment on Razorpay checkout:
+   - **Test Card**: 4111 1111 1111 1111
+   - **CVV**: Any 3 digits
+   - **Expiry**: Any future date
+   - **OTP**: Any code (test mode)
+5. After successful payment, you'll be redirected to dashboard
+
+### View Your Subscription
+Dashboard will show:
+- ✅ Active subscription details
+- ✅ Plan limits (TFNs, minutes, extensions)
+- ✅ Billing information
+- ✅ Plan features
+- ✅ Usage statistics
+
+---
+
+## 🧪 Testing Checklist
+
+### Authentication Tests
+- [ ] Register new account
+- [ ] Login with credentials
+- [ ] Logout
+- [ ] Protected routes redirect to login
+- [ ] Token refresh works
+- [ ] Forgot password flow
+
+### Plan Selection Tests
+- [ ] View all plans without login
+- [ ] Toggle billing cycles (monthly/quarterly/annual)
+- [ ] Price updates correctly for each cycle
+- [ ] Annual plan shows 20% savings
+- [ ] Quarterly plan shows "No setup fee" badge
+- [ ] Select plan redirects to login if not authenticated
+- [ ] Can't select current plan (disabled)
+
+### Add-on Tests
+- [ ] Increase/decrease extra TFNs
+- [ ] Increase/decrease extra extensions
+- [ ] Add-on pricing changes based on billing cycle:
+  - Monthly: Shows OTC charges (₹199/₹99)
+  - Quarterly: Shows PAYG rate (₹1/month)
+  - Annual: Shows PAYG rate (₹1/month)
+- [ ] Maximum 10 of each add-on
+- [ ] Subtotal calculates correctly
+
+### Price Calculation Tests
+- [ ] Base price updates on billing cycle change
+- [ ] Add-ons calculated correctly
+- [ ] GST (18%) calculated correctly
+- [ ] Total matches backend calculation
+- [ ] Price summary shows all line items
+
+### Checkout Tests
+- [ ] Customer form pre-fills user data
+- [ ] Form validation works (required fields)
+- [ ] Phone number validation
+- [ ] Order summary matches plan selection
+- [ ] Back button returns to plans page
+
+### Payment Tests
+- [ ] Razorpay checkout opens
+- [ ] Test card payment succeeds
+- [ ] Payment cancellation works
+- [ ] Failed payment shows error
+- [ ] Successful payment redirects to dashboard
+- [ ] Subscription activated in database
+- [ ] Payment record created
+
+### Dashboard Tests
+- [ ] Shows "No subscription" CTA when no plan
+- [ ] Shows subscription details after purchase
+- [ ] All plan limits displayed correctly
+- [ ] Billing dates formatted correctly
+- [ ] Features list displayed
+- [ ] "Upgrade Plan" button navigates to plans page
+
+### Responsive Design Tests
+- [ ] Mobile view (< 768px)
+- [ ] Tablet view (768px - 1024px)
+- [ ] Desktop view (> 1024px)
+- [ ] Plan cards stack on mobile
+- [ ] Forms usable on mobile
+- [ ] Dashboard cards responsive
+
+### Error Handling Tests
+- [ ] Network error shows toast
+- [ ] API error shows toast
+- [ ] Invalid payment signature shows error
+- [ ] Expired token refreshes automatically
+- [ ] Loading states show spinner
+
+---
+
+## 🔧 Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint code
+npm run lint
 ```
 
-### ❌ Component not found
-Check the import path and alias configuration in `vite.config.js`
+---
 
-### ❌ API calls failing
-1. Check `.env` file has correct `VITE_API_BASE_URL`
-2. Ensure backend server is running
-3. Check browser console for CORS errors
+## 📦 Key Dependencies
+
+```json
+{
+  "react": "^19.1.1",
+  "react-dom": "^19.1.1",
+  "react-router-dom": "^7.1.3",
+  "axios": "^1.7.9",
+  "react-hook-form": "^7.54.2",
+  "zod": "^3.24.1",
+  "react-hot-toast": "^2.4.1",
+  "lucide-react": "^0.468.0",
+  "tailwindcss": "^4.1.14"
+}
+```
 
 ---
 
-## 💡 Development Tips
+## 🎨 Component Overview
 
-### Hot Reload
-- Save any file to see instant changes
-- Vite's HMR is very fast
-- If something breaks, reload the page
+### Common Components
+- **Button**: Primary, secondary, outline variants
+- **Input**: Text, email, password with validation
+- **Card**: Container with optional title
+- **Spinner**: Loading indicator
+- **Alert**: Success, error, warning messages
 
-### Browser DevTools
-- Use React DevTools extension
-- Use TanStack Query DevTools (add to App.jsx)
-- Check Network tab for API calls
+### Plan Components
+- **PlanCard**: Individual plan display with pricing
+- **AddonSelector**: Interactive add-on selection
 
-### Code Style
-- Use Prettier for formatting (optional)
-- Follow existing patterns in the codebase
-- Keep components small and focused
+### Layout Components
+- **MainLayout**: Dashboard wrapper with navigation
+- **AuthLayout**: Centered layout for auth pages
 
----
-
-## 🎯 Today's Goals
-
-Pick one and start building:
-
-- [ ] Finish Dashboard with real data
-- [ ] Create Subscription Plans page
-- [ ] Build Invoice list page
-- [ ] Implement CDR table
-- [ ] Add user profile page
+### Route Components
+- **PrivateRoute**: Requires authentication
+- **PublicRoute**: Redirects if authenticated
 
 ---
 
-## 🎉 You're All Set!
+## 🔐 Security Features
 
-Your development environment is ready. The foundation is solid. Now it's time to build the features!
-
-**Start with**: Dashboard → then pick any feature you need most
-
-**Remember**: 
-- Use the UI components already built
-- Follow the patterns in existing code
-- Test on mobile regularly
-- Have fun building! 🚀
+1. **JWT Authentication**: Access & refresh tokens
+2. **Token Storage**: Secure localStorage
+3. **Auto Refresh**: Automatic token renewal
+4. **Protected Routes**: Authentication required
+5. **Payment Verification**: Signature validation
+6. **HTTPS**: Required for production Razorpay
 
 ---
 
-**Need help?** Check `PROJECT_SUMMARY.md` for detailed documentation.
+## 🐛 Troubleshooting
 
-**Happy coding! 💻✨**
+### Issue: Plans not loading
+**Solution**: Check backend is running on port 3000
+```bash
+cd backend
+npm run dev
+```
+
+### Issue: Payment fails
+**Solution**: 
+1. Check Razorpay keys in backend `.env`
+2. Ensure using test mode keys
+3. Use Razorpay test card: 4111 1111 1111 1111
+
+### Issue: Login doesn't work
+**Solution**:
+1. Check backend migrations and seeders ran
+2. Verify database connection
+3. Check JWT secrets in backend `.env`
+
+### Issue: Blank screen
+**Solution**:
+1. Check browser console for errors
+2. Verify `VITE_API_BASE_URL` in frontend `.env`
+3. Clear browser cache and localStorage
+
+### Issue: Subscription not showing
+**Solution**:
+1. Complete payment successfully
+2. Check payment verification succeeded
+3. Refresh dashboard page
+4. Check subscription status in database
+
+---
+
+## 📞 Support
+
+For issues or questions:
+1. Check `FRONTEND_COMPLETE.md` for detailed documentation
+2. Check `backend/API_ENDPOINTS.md` for API reference
+3. Review browser console for errors
+4. Check network tab for failed requests
+
+---
+
+## ✅ Success Criteria
+
+Your setup is working correctly if:
+- ✅ Can register and login
+- ✅ Can view all 3 plans
+- ✅ Can select plan and add add-ons
+- ✅ Price calculator works in real-time
+- ✅ Can complete Razorpay payment
+- ✅ Dashboard shows active subscription
+- ✅ All statistics display correctly
+
+**Happy coding! 🎉**

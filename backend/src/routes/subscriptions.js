@@ -6,12 +6,34 @@
 const express = require('express');
 const router = express.Router();
 const subscriptionController = require('../controllers/subscriptionController');
+const usageController = require('../controllers/usageController');
 const { validate, schemas } = require('../middleware/validation');
 const { authenticate, requireRole, requireCustomerAccess } = require('../middleware/auth');
 
 /**
  * Subscription routes
  */
+
+// Get current user's active subscription (must be before /:id routes)
+router.get(
+  '/my-subscription',
+  authenticate,
+  subscriptionController.getMySubscription
+);
+
+// Create subscription with payment (Razorpay) (must be before /:id routes)
+router.post(
+  '/create-with-payment',
+  authenticate,
+  subscriptionController.createSubscriptionWithPayment
+);
+
+// Verify payment and activate subscription (must be before /:id routes)
+router.post(
+  '/verify-payment',
+  authenticate,
+  subscriptionController.verifyPaymentAndActivate
+);
 
 // Create subscription
 router.post(
@@ -67,7 +89,13 @@ router.post(
 );
 
 // Get subscription usage
-router.get('/:id/usage', authenticate, subscriptionController.getSubscriptionUsage);
+router.get('/:id/usage', authenticate, usageController.getCurrentUsage);
+
+// Get subscription usage history
+router.get('/:id/usage/history', authenticate, usageController.getUsageHistory);
+
+// Get subscription usage summary
+router.get('/:id/usage/summary', authenticate, usageController.getUsageSummary);
 
 // Update subscription usage (internal/admin only)
 router.post(

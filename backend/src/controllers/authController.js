@@ -10,6 +10,7 @@ const {
   createdResponse,
   errorResponse,
 } = require('../utils/responseHandler');
+const { NotFoundError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
 /**
@@ -227,6 +228,10 @@ exports.getCurrentUser = asyncHandler(async (req, res) => {
       },
     ],
   });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
 
   return successResponse(res, user.toJSON(), 'User retrieved successfully');
 });

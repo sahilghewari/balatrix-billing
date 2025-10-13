@@ -108,14 +108,25 @@ class SubscriptionService {
       );
 
       // Create initial usage record
+      const planFeatures = ratePlan.features || {};
+      const planLimits = ratePlan.limits || {};
+      
       await SubscriptionUsage.create(
         {
           subscriptionId: subscription.id,
-          periodStart: billingStart,
-          periodEnd: billingEnd,
+          billingPeriodStart: billingStart,
+          billingPeriodEnd: billingEnd,
+          minutesIncluded: planLimits.monthlyMinuteAllowance || planFeatures.freeMinutes || 0,
           minutesUsed: 0,
-          tollFreeNumbers: 0,
-          extensions: 0,
+          minutesOverage: 0,
+          overageCost: 0,
+          localCalls: 0,
+          stdCalls: 0,
+          isdCalls: 0,
+          mobileCalls: 0,
+          metadata: {
+            perMinuteRate: planFeatures.perMinuteCharge || 0,
+          },
         },
         { transaction }
       );
@@ -159,7 +170,7 @@ class SubscriptionService {
         },
         {
           model: RatePlan,
-          as: 'ratePlan',
+          as: 'plan',
         },
         {
           model: Account,
@@ -168,7 +179,7 @@ class SubscriptionService {
         {
           model: SubscriptionUsage,
           as: 'usageRecords',
-          order: [['periodStart', 'DESC']],
+          order: [['billingPeriodStart', 'DESC']],
           limit: 1,
         },
       ],
@@ -215,7 +226,7 @@ class SubscriptionService {
         },
         {
           model: RatePlan,
-          as: 'ratePlan',
+          as: 'plan',
         },
       ],
       limit,
@@ -268,7 +279,7 @@ class SubscriptionService {
     try {
       const subscription = await Subscription.findByPk(subscriptionId, {
         include: [
-          { model: RatePlan, as: 'ratePlan' },
+          { model: RatePlan, as: 'plan' },
           { model: Account, as: 'account' },
         ],
         transaction,
@@ -289,7 +300,7 @@ class SubscriptionService {
         throw new NotFoundError('New rate plan not found');
       }
 
-      const oldPlan = subscription.ratePlan;
+      const oldPlan = subscription.plan;
 
       if (effective === 'now') {
         // Calculate prorated amount
@@ -319,7 +330,7 @@ class SubscriptionService {
         });
 
         // Update subscription
-        subscription.ratePlanId = newRatePlanId;
+        subscription.planId = newRatePlanId;
         await subscription.save({ transaction });
 
         // Handle prorated charge/credit
@@ -457,12 +468,12 @@ class SubscriptionService {
     const where = { subscriptionId };
 
     if (periodStart && periodEnd) {
-      where.periodStart = { [Op.gte]: periodStart };
-      where.periodEnd = { [Op.lte]: periodEnd };
+      where.billingPeriodStart = { [Op.gte]: periodStart };
+      where.billingPeriodEnd = { [Op.lte]: periodEnd };
     } else {
       // Get current period usage
-      where.periodStart = subscription.currentPeriodStart;
-      where.periodEnd = subscription.currentPeriodEnd;
+      where.billingPeriodStart = subscription.currentPeriodStart;
+      where.billingPeriodEnd = subscription.currentPeriodEnd;
     }
 
     const usage = await SubscriptionUsage.findOne({ where });
@@ -484,19 +495,30 @@ class SubscriptionService {
     let usage = await SubscriptionUsage.findOne({
       where: {
         subscriptionId,
-        periodStart: subscription.currentPeriodStart,
-        periodEnd: subscription.currentPeriodEnd,
+        billingPeriodStart: subscription.currentPeriodStart,
+        billingPeriodEnd: subscription.currentPeriodEnd,
       },
     });
 
     if (!usage) {
+      const planFeatures = subscription.plan?.features || {};
+      const planLimits = subscription.plan?.limits || {};
+      
       usage = await SubscriptionUsage.create({
         subscriptionId,
-        periodStart: subscription.currentPeriodStart,
-        periodEnd: subscription.currentPeriodEnd,
+        billingPeriodStart: subscription.currentPeriodStart,
+        billingPeriodEnd: subscription.currentPeriodEnd,
+        minutesIncluded: planLimits.monthlyMinuteAllowance || planFeatures.freeMinutes || 0,
         minutesUsed: 0,
-        tollFreeNumbers: 0,
-        extensions: 0,
+        minutesOverage: 0,
+        overageCost: 0,
+        localCalls: 0,
+        stdCalls: 0,
+        isdCalls: 0,
+        mobileCalls: 0,
+        metadata: {
+          perMinuteRate: planFeatures.perMinuteCharge || 0,
+        },
       });
     }
 
@@ -519,7 +541,7 @@ class SubscriptionService {
 
     try {
       const subscription = await Subscription.findByPk(subscriptionId, {
-        include: [{ model: RatePlan, as: 'ratePlan' }],
+        include: [{ model: RatePlan, as: 'plan' }],
         transaction,
       });
 
@@ -531,14 +553,25 @@ class SubscriptionService {
       await subscription.updateBillingPeriod(transaction);
 
       // Create new usage record for next period
+      const planFeatures = subscription.plan?.features || {};
+      const planLimits = subscription.plan?.limits || {};
+      
       await SubscriptionUsage.create(
         {
           subscriptionId: subscription.id,
-          periodStart: subscription.currentPeriodStart,
-          periodEnd: subscription.currentPeriodEnd,
+          billingPeriodStart: subscription.currentPeriodStart,
+          billingPeriodEnd: subscription.currentPeriodEnd,
+          minutesIncluded: planLimits.monthlyMinuteAllowance || planFeatures.freeMinutes || 0,
           minutesUsed: 0,
-          tollFreeNumbers: 0,
-          extensions: 0,
+          minutesOverage: 0,
+          overageCost: 0,
+          localCalls: 0,
+          stdCalls: 0,
+          isdCalls: 0,
+          mobileCalls: 0,
+          metadata: {
+            perMinuteRate: planFeatures.perMinuteCharge || 0,
+          },
         },
         { transaction }
       );
@@ -553,7 +586,7 @@ class SubscriptionService {
 
       // Schedule payment for renewal
       const pricing = pricingService.getSubscriptionPrice(
-        subscription.ratePlan.planType,
+        subscription.plan.planType,
         subscription.billingCycle
       );
 
@@ -585,7 +618,7 @@ class SubscriptionService {
       },
       include: [
         { model: Customer, as: 'customer' },
-        { model: RatePlan, as: 'ratePlan' },
+        { model: RatePlan, as: 'plan' },
       ],
     });
 
@@ -623,13 +656,398 @@ class SubscriptionService {
     const subscriptions = await Subscription.findAll({
       where: { customerId },
       include: [
-        { model: RatePlan, as: 'ratePlan' },
+        { model: RatePlan, as: 'plan' },
         { model: Account, as: 'account' },
       ],
       order: [['createdAt', 'DESC']],
     });
 
     return subscriptions;
+  }
+
+  /**
+   * Create subscription with Razorpay payment
+   */
+  async createSubscriptionWithPayment({
+    userId,
+    planId,
+    billingCycle,
+    addons = {},
+    customerData,
+  }) {
+    const transaction = await sequelize.transaction();
+    const crypto = require('crypto');
+    const { razorpayInstance, createOrder: createRazorpayOrder } = require('../config/razorpay');
+    const ratePlanService = require('./ratePlanService');
+    const User = require('../models').User;
+
+    try {
+      // Get user
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Calculate pricing
+      const pricing = await ratePlanService.calculateSubscriptionPrice({
+        planId,
+        billingCycle,
+        addons,
+      });
+
+      // Create or get customer
+      let customer = await Customer.findOne({
+        where: { userId },
+        transaction,
+      });
+
+      if (!customer && customerData) {
+        customer = await Customer.create(
+          {
+            userId,
+            firstName: customerData.firstName || user.username,
+            lastName: customerData.lastName || '',
+            email: user.email,
+            phone: customerData.phone || '',
+            company: customerData.company || '',
+            address: customerData.address || '',
+            city: customerData.city || '',
+            state: customerData.state || '',
+            country: customerData.country || 'IN',
+            postalCode: customerData.postalCode || '',
+            gstNumber: customerData.gstNumber || '',
+            status: 'active',
+          },
+          { transaction }
+        );
+      } else if (!customer) {
+        throw new ValidationError(
+          'Customer data required for first subscription'
+        );
+      }
+
+      // Create or get account
+      let account = await Account.findOne({
+        where: { customerId: customer.id, status: 'active' },
+        transaction,
+      });
+
+      if (!account) {
+        account = await Account.create(
+          {
+            customerId: customer.id,
+            accountNumber: `ACC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            status: 'active',
+            balance: 0,
+            creditLimit: 0,
+            currency: pricing.currency,
+          },
+          { transaction }
+        );
+      }
+
+      // Create Razorpay order
+      const receiptId = `rcpt_${Date.now()}`;
+      const razorpayOrder = await createRazorpayOrder({
+        amount: pricing.pricing.totalAmount, // Amount in rupees (will be converted to paise in createOrder)
+        currency: pricing.currency,
+        receipt: receiptId,
+        notes: {
+          userId: user.id,
+          customerId: customer.id,
+          planId: pricing.plan.id,
+          planName: pricing.plan.name,
+          billingCycle,
+          addons: JSON.stringify(addons),
+        },
+      });
+
+      // Generate subscription number
+      const subscriptionNumber = `SUB-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+      
+      // Calculate billing dates
+      const startDate = new Date();
+      const billingDates = getBillingCycleDates(startDate, billingCycle);
+
+      // Create pending subscription record
+      const subscription = await Subscription.create(
+        {
+          customerId: customer.id,
+          accountId: account.id,
+          planId: planId, // Use planId, not ratePlanId
+          subscriptionNumber: subscriptionNumber,
+          status: 'pending',
+          billingCycle,
+          billingAmount: pricing.pricing.totalAmount,
+          currency: pricing.currency,
+          startDate: startDate,
+          currentPeriodStart: billingDates.periodStart,
+          currentPeriodEnd: billingDates.periodEnd,
+          nextBillingDate: billingDates.nextBillingDate,
+          autoRenew: true,
+          metadata: {
+            razorpayOrderId: razorpayOrder.id,
+            pricing: pricing,
+            addons: addons,
+          },
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      logger.info('Razorpay order created', {
+        orderId: razorpayOrder.id,
+        subscriptionId: subscription.id,
+        amount: pricing.totalWithGst,
+      });
+
+      return {
+        orderId: razorpayOrder.id,
+        subscriptionId: subscription.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        key: process.env.RAZORPAY_KEY_ID,
+        pricing,
+        customer: {
+          id: customer.id,
+          name: `${customer.firstName} ${customer.lastName}`,
+          email: customer.email,
+          contact: customer.phone,
+        },
+      };
+    } catch (error) {
+      await transaction.rollback();
+      logger.error('Error creating subscription with payment', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Verify Razorpay payment and activate subscription
+   */
+  async verifyPaymentAndActivateSubscription({
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    subscriptionId,
+  }) {
+    const transaction = await sequelize.transaction();
+    const crypto = require('crypto');
+
+    try {
+      // Verify signature
+      const body = razorpay_order_id + '|' + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest('hex');
+
+      if (expectedSignature !== razorpay_signature) {
+        throw new ValidationError('Invalid payment signature');
+      }
+
+      // Get subscription
+      const subscription = await Subscription.findByPk(subscriptionId, {
+        include: [
+          { model: RatePlan, as: 'plan' },
+          { model: Customer, as: 'customer' },
+          { model: Account, as: 'account' },
+        ],
+        transaction,
+      });
+
+      if (!subscription) {
+        throw new NotFoundError('Subscription not found');
+      }
+
+      if (subscription.status !== 'pending') {
+        throw new BusinessLogicError('Subscription is not in pending state');
+      }
+
+      // Calculate billing dates
+      const startDate = new Date();
+      const { startDate: billingStart, endDate: billingEnd } =
+        getBillingCycleDates(startDate, subscription.billingCycle);
+
+      let nextBillingDate = new Date(billingEnd);
+      nextBillingDate.setDate(nextBillingDate.getDate() + 1);
+
+      // Update subscription to active
+      await subscription.update(
+        {
+          status: 'active',
+          startDate,
+          currentPeriodStart: billingStart,
+          currentPeriodEnd: billingEnd,
+          nextBillingDate,
+          activatedAt: new Date(),
+        },
+        { transaction }
+      );
+
+      // Get pricing from subscription metadata
+      const pricing = subscription.metadata.pricing;
+      
+      // Initialize subscription usage tracking
+      const planFeatures = subscription.plan?.features || pricing.features || {};
+      const planLimits = subscription.plan?.limits || pricing.limits || {};
+      
+      // Determine free minutes - try multiple sources
+      let freeMinutes = 0;
+      if (planLimits.monthlyMinuteAllowance) {
+        freeMinutes = parseInt(planLimits.monthlyMinuteAllowance);
+      } else if (planFeatures.freeMinutes) {
+        freeMinutes = parseInt(planFeatures.freeMinutes);
+      } else if (pricing.freeMinutes) {
+        freeMinutes = parseInt(pricing.freeMinutes);
+      }
+      
+      // Fallback defaults based on price
+      if (freeMinutes === 0) {
+        const basePrice = subscription.plan?.basePrice || 0;
+        if (basePrice <= 500) freeMinutes = 100;
+        else if (basePrice <= 1500) freeMinutes = 500;
+        else freeMinutes = 1500;
+      }
+      
+      logger.info('Creating subscription usage', {
+        subscriptionId: subscription.id,
+        planName: subscription.plan?.planName,
+        freeMinutes,
+        planFeatures,
+        planLimits,
+      });
+      
+      await SubscriptionUsage.create(
+        {
+          subscriptionId: subscription.id,
+          billingPeriodStart: billingStart,
+          billingPeriodEnd: billingEnd,
+          // Free minutes from plan
+          minutesIncluded: freeMinutes,
+          minutesUsed: 0,
+          minutesOverage: 0,
+          overageCost: 0.0,
+          // Call types
+          localCalls: 0,
+          stdCalls: 0,
+          isdCalls: 0,
+          mobileCalls: 0,
+          metadata: {
+            perMinuteRate: planFeatures.perMinuteCharge || 1.99,
+            billingCycle: subscription.billingCycle,
+            planName: subscription.plan?.planName || pricing.plan?.name,
+          },
+        },
+        { transaction }
+      );
+
+      // Create payment record
+      const totalAmount = pricing.pricing?.totalAmount || pricing.totalAmount;
+      
+      // Generate payment number
+      const paymentNumber = `PAY-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+      
+      const payment = await Payment.create(
+        {
+          customerId: subscription.customerId,
+          accountId: subscription.accountId,
+          subscriptionId: subscription.id,
+          invoiceId: null, // Can link to invoice if needed
+          paymentNumber: paymentNumber,
+          amount: totalAmount,
+          currency: pricing.currency || 'INR',
+          status: 'completed',
+          paymentMethod: 'razorpay',
+          paymentType: 'subscription',
+          gateway: 'razorpay',
+          gatewayPaymentId: razorpay_payment_id,
+          gatewayOrderId: razorpay_order_id,
+          gatewaySignature: razorpay_signature,
+          paidAt: new Date(),
+          metadata: {
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            signature: razorpay_signature,
+          },
+        },
+        { transaction }
+      );
+
+      // Update account balance if needed
+      await subscription.account.update(
+        {
+          balance: sequelize.literal(`balance + ${totalAmount}`),
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      logger.info('Subscription activated successfully', {
+        subscriptionId: subscription.id,
+        paymentId: payment.id,
+      });
+
+      // Fetch updated subscription data after commit
+      const updatedSubscription = await this.getSubscriptionById(subscription.id);
+
+      return {
+        subscription: updatedSubscription,
+        payment: {
+          id: payment.id,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          gatewayPaymentId: payment.gatewayPaymentId,
+        },
+      };
+    } catch (error) {
+      // Only rollback if transaction is still active
+      if (!transaction.finished) {
+        await transaction.rollback();
+      }
+      logger.error('Error verifying payment and activating subscription', {
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's active subscription
+   */
+  async getUserActiveSubscription(userId) {
+    const User = require('../models').User;
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return null;
+    }
+
+    const subscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      include: [
+        { model: RatePlan, as: 'plan' },
+        { model: Account, as: 'account' },
+        { model: Customer, as: 'customer' },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    return subscription;
   }
 }
 

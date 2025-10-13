@@ -49,7 +49,7 @@ class CDRProcessorService {
             model: Subscription,
             as: 'subscriptions',
             where: { status: 'active' },
-            include: [{ model: RatePlan, as: 'ratePlan' }],
+            include: [{ model: RatePlan, as: 'plan' }],
             required: false,
           },
         ],
@@ -129,9 +129,11 @@ class CDRProcessorService {
 
       // Update subscription usage asynchronously
       if (account.subscriptions && account.subscriptions.length > 0) {
+        const callType = this.determineCallType(calledNumber);
         await addJob('cdrProcessing', 'updateSubscriptionUsage', {
           subscriptionId: account.subscriptions[0].id,
           minutes: cdr.calculateBillableMinutes(),
+          callType,
         });
       }
 
@@ -586,6 +588,35 @@ class CDRProcessorService {
     });
 
     return destinations;
+  }
+
+  /**
+   * Determine call type based on called number
+   * @param {string} calledNumber - Called number in E.164 format
+   * @returns {string} - Call type: local, std, isd, or mobile
+   */
+  determineCallType(calledNumber) {
+    // Remove country code prefix if present
+    const number = calledNumber.replace(/^\+91/, '').replace(/^\+/, '');
+
+    // Mobile numbers in India start with 6, 7, 8, 9 and are 10 digits
+    if (/^[6-9]\d{9}$/.test(number)) {
+      return 'mobile';
+    }
+
+    // International numbers (not India)
+    if (calledNumber.startsWith('+') && !calledNumber.startsWith('+91')) {
+      return 'isd';
+    }
+
+    // STD codes are typically 2-5 digits followed by 6-8 digits
+    // For simplicity, numbers with STD code patterns
+    if (/^0[1-9]\d{8,10}$/.test(number)) {
+      return 'std';
+    }
+
+    // Default to local
+    return 'local';
   }
 }
 

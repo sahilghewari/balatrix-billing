@@ -1,108 +1,145 @@
 /**
  * Main App Component
- * Root component with routing and providers
+ * Sets up routing and global providers
  */
 
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
-import { ErrorBoundary } from '@components/common/ErrorBoundary';
-import { ProtectedRoute } from '@components/common/ProtectedRoute';
-import { LoadingPage } from '@components/common/LoadingPage';
-import { Layout } from '@components/layout/Layout';
-import { ROUTES } from '@utils/constants';
-import { useTheme } from '@hooks/useTheme';
+import { AuthProvider } from './contexts';
+import PrivateRoute from './components/PrivateRoute';
+import PublicRoute from './components/PublicRoute';
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  DashboardPage,
+} from './pages';
+import PlansPage from './pages/PlansPage';
+import CheckoutPage from './pages/CheckoutPage';
+import './App.css';
 
-// Lazy load pages for code splitting
-const Login = lazy(() => import('@pages/auth/Login'));
-const Register = lazy(() => import('@pages/auth/Register'));
-const Dashboard = lazy(() => import('@pages/dashboard/Dashboard'));
-const ConnectionTest = lazy(() => import('@pages/ConnectionTest'));
-const NotFound = lazy(() => import('@pages/NotFound'));
-
-// Create QueryClient instance
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
-
-function AppContent() {
-  const { initTheme } = useTheme();
-
-  // Initialize theme on mount
-  React.useEffect(() => {
-    initTheme();
-  }, [initTheme]);
-
+function App() {
   return (
-    <ErrorBoundary>
-      <Router>
-        <Suspense fallback={<LoadingPage />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path={ROUTES.LOGIN} element={<Login />} />
-            <Route path={ROUTES.REGISTER} element={<Register />} />
-            <Route path="/connection-test" element={<ConnectionTest />} />
-            
-            {/* Protected Routes */}
-            <Route
-              path={ROUTES.DASHBOARD}
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Dashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Redirect root to dashboard */}
-            <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
-
-            {/* 404 Not Found */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-
+    <Router>
+      <AuthProvider>
         {/* Toast Notifications */}
         <Toaster
           position="top-right"
           toastOptions={{
-            duration: 3000,
+            duration: 4000,
             style: {
-              background: '#fff',
-              color: '#374151',
+              background: '#363636',
+              color: '#fff',
             },
             success: {
+              duration: 3000,
               iconTheme: {
-                primary: '#10b981',
+                primary: '#10B981',
                 secondary: '#fff',
               },
             },
             error: {
+              duration: 4000,
               iconTheme: {
-                primary: '#ef4444',
+                primary: '#EF4444',
                 secondary: '#fff',
               },
             },
           }}
         />
-      </Router>
-    </ErrorBoundary>
-  );
-}
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
+        {/* Routes */}
+        <Routes>
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Public Routes */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPasswordPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <PublicRoute>
+                <ResetPasswordPage />
+              </PublicRoute>
+            }
+          />
+
+          {/* Private Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <DashboardPage />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Plans Page - Public (browsing), Private (selecting) */}
+          <Route path="/plans" element={<PlansPage />} />
+          
+          {/* Checkout Page - Private */}
+          <Route
+            path="/checkout"
+            element={
+              <PrivateRoute>
+                <CheckoutPage />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Future routes will go here */}
+          {/* 
+          <Route path="/customers" element={<PrivateRoute><CustomersPage /></PrivateRoute>} />
+          <Route path="/invoices" element={<PrivateRoute><InvoicesPage /></PrivateRoute>} />
+          <Route path="/payments" element={<PrivateRoute><PaymentsPage /></PrivateRoute>} />
+          */}
+
+          {/* 404 Not Found */}
+          <Route
+            path="*"
+            element={
+              <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <h1 className="text-6xl font-bold text-gray-900">404</h1>
+                  <p className="mt-4 text-xl text-gray-600">Page not found</p>
+                  <a
+                    href="/dashboard"
+                    className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Go to Dashboard
+                  </a>
+                </div>
+              </div>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 

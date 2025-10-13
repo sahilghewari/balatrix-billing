@@ -114,12 +114,8 @@ exports.activateSubscription = asyncHandler(async (req, res) => {
  * GET /api/subscriptions/:id/usage
  */
 exports.getSubscriptionUsage = asyncHandler(async (req, res) => {
-  const { periodStart, periodEnd } = req.query;
-  const usage = await subscriptionService.getSubscriptionUsage(
-    req.params.id,
-    periodStart,
-    periodEnd
-  );
+  const usageService = require('../services/usageService');
+  const usage = await usageService.getCurrentUsage(req.params.id, req.user.id);
   return successResponse(res, usage, 'Subscription usage retrieved successfully');
 });
 
@@ -157,6 +153,62 @@ exports.getCustomerSubscriptions = asyncHandler(async (req, res) => {
     subscriptions,
     'Customer subscriptions retrieved successfully'
   );
+});
+
+/**
+ * Create subscription with payment (Razorpay)
+ * POST /api/subscriptions/create-with-payment
+ */
+exports.createSubscriptionWithPayment = asyncHandler(async (req, res) => {
+  const userId = req.user.id; // From auth middleware
+  const { planId, billingCycle, addons, customerData } = req.body;
+
+  const result = await subscriptionService.createSubscriptionWithPayment({
+    userId,
+    planId,
+    billingCycle,
+    addons,
+    customerData,
+  });
+
+  return createdResponse(res, result, 'Subscription order created successfully');
+});
+
+/**
+ * Verify payment and activate subscription
+ * POST /api/subscriptions/verify-payment
+ */
+exports.verifyPaymentAndActivate = asyncHandler(async (req, res) => {
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    subscriptionId,
+  } = req.body;
+
+  const result = await subscriptionService.verifyPaymentAndActivateSubscription({
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    subscriptionId,
+  });
+
+  return successResponse(res, result, 'Payment verified and subscription activated');
+});
+
+/**
+ * Get current user's active subscription
+ * GET /api/subscriptions/my-subscription
+ */
+exports.getMySubscription = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const subscription = await subscriptionService.getUserActiveSubscription(userId);
+  
+  if (!subscription) {
+    return successResponse(res, null, 'No active subscription found');
+  }
+  
+  return successResponse(res, subscription, 'Subscription retrieved successfully');
 });
 
 module.exports = exports;

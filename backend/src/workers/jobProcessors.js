@@ -46,19 +46,20 @@ cdrProcessingQueue.process('processCDR', async (job) => {
 });
 
 cdrProcessingQueue.process('updateSubscriptionUsage', async (job) => {
-  const { subscriptionId, minutes } = job.data;
-  logger.info('Updating subscription usage', { jobId: job.id, subscriptionId });
+  const { subscriptionId, minutes, callType = 'local' } = job.data;
+  logger.info('Updating subscription usage', { jobId: job.id, subscriptionId, minutes, callType });
 
   try {
-    const usage = await subscriptionService.getSubscriptionUsage(subscriptionId);
-    
-    if (usage) {
-      await subscriptionService.updateSubscriptionUsage(subscriptionId, {
-        minutesUsed: (usage.minutesUsed || 0) + minutes,
-      });
-    }
+    const usageService = require('../services/usageService');
+    const result = await usageService.addMinutesUsed(subscriptionId, minutes, callType);
 
-    return { success: true };
+    logger.info('Subscription usage updated successfully', {
+      jobId: job.id,
+      subscriptionId,
+      result,
+    });
+
+    return { success: true, usage: result };
   } catch (error) {
     logger.error('Update subscription usage job failed', {
       jobId: job.id,

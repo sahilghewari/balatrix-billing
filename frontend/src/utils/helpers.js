@@ -1,122 +1,165 @@
 /**
- * Helper Utilities
- * General purpose utility functions
+ * Utility Functions
  */
-
-import { clsx } from 'clsx';
 
 /**
- * Class names utility (wrapper for clsx)
- * @param {...any} classes - Class names to merge
- * @returns {string} Merged class names
+ * Format date to readable string
  */
-export const cn = (...classes) => {
-  return clsx(...classes);
+export const formatDate = (date, format = 'DD/MM/YYYY') => {
+  if (!date) return '';
+  const d = new Date(date);
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  
+  return format
+    .replace('DD', day)
+    .replace('MM', month)
+    .replace('YYYY', year)
+    .replace('HH', hours)
+    .replace('mm', minutes)
+    .replace('ss', seconds);
 };
 
 /**
- * Delay/Sleep function
- * @param {number} ms - Milliseconds to delay
- * @returns {Promise} Promise that resolves after delay
+ * Format currency (Indian Rupees)
  */
-export const sleep = (ms) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
+export const formatCurrency = (amount, currency = 'INR') => {
+  if (amount === null || amount === undefined) return '';
+  
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+  }).format(amount);
 };
 
 /**
- * Generate a random ID
- * @param {number} length - Length of the ID (default: 8)
- * @returns {string} Random ID
+ * Truncate text with ellipsis
  */
-export const generateId = (length = 8) => {
-  return Math.random().toString(36).substring(2, 2 + length);
+export const truncateText = (text, maxLength = 50) => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
 };
 
 /**
- * Deep clone an object
- * @param {any} obj - Object to clone
- * @returns {any} Cloned object
- */
-export const deepClone = (obj) => {
-  if (obj === null || typeof obj !== 'object') return obj;
-  return JSON.parse(JSON.stringify(obj));
-};
-
-/**
- * Check if object is empty
- * @param {object} obj - Object to check
- * @returns {boolean} True if empty
- */
-export const isEmpty = (obj) => {
-  if (obj === null || obj === undefined) return true;
-  if (Array.isArray(obj)) return obj.length === 0;
-  if (typeof obj === 'object') return Object.keys(obj).length === 0;
-  if (typeof obj === 'string') return obj.trim() === '';
-  return false;
-};
-
-/**
- * Capitalize first letter of string
- * @param {string} str - String to capitalize
- * @returns {string} Capitalized string
+ * Capitalize first letter
  */
 export const capitalize = (str) => {
-  if (!str || typeof str !== 'string') return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-/**
- * Convert string to title case
- * @param {string} str - String to convert
- * @returns {string} Title case string
- */
-export const toTitleCase = (str) => {
-  if (!str || typeof str !== 'string') return '';
-  return str.replace(/\w\S*/g, (txt) => {
-    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-  });
-};
-
-/**
- * Convert snake_case to camelCase
- * @param {string} str - String to convert
- * @returns {string} CamelCase string
- */
-export const toCamelCase = (str) => {
-  if (!str || typeof str !== 'string') return '';
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-/**
- * Convert camelCase to snake_case
- * @param {string} str - String to convert
- * @returns {string} Snake_case string
- */
-export const toSnakeCase = (str) => {
-  if (!str || typeof str !== 'string') return '';
-  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
 /**
  * Get initials from name
- * @param {string} name - Name to get initials from
- * @returns {string} Initials (max 2 characters)
  */
-export const getInitials = (name) => {
-  if (!name || typeof name !== 'string') return '';
+export const getInitials = (firstName, lastName) => {
+  const first = firstName?.charAt(0)?.toUpperCase() || '';
+  const last = lastName?.charAt(0)?.toUpperCase() || '';
+  return `${first}${last}`;
+};
+
+/**
+ * Debounce function
+ */
+export const debounce = (func, delay = 300) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
+};
+
+/**
+ * Parse error message from API response
+ */
+export const parseErrorMessage = (error) => {
+  if (typeof error === 'string') return error;
+  if (error?.message) return error.message;
+  if (error?.data?.message) return error.data.message;
+  if (error?.response?.data?.message) return error.response.data.message;
+  return 'An unexpected error occurred';
+};
+
+/**
+ * Check if object is empty
+ */
+export const isEmpty = (obj) => {
+  if (!obj) return true;
+  return Object.keys(obj).length === 0;
+};
+
+/**
+ * Deep clone object
+ */
+export const deepClone = (obj) => {
+  return JSON.parse(JSON.stringify(obj));
+};
+
+/**
+ * Generate random color for avatar
+ */
+export const getRandomColor = () => {
+  const colors = [
+    '#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B',
+    '#EF4444', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
+/**
+ * Validate Indian phone number
+ */
+export const isValidIndianPhone = (phone) => {
+  const phoneRegex = /^[6-9]\d{9}$/;
+  return phoneRegex.test(phone);
+};
+
+/**
+ * Format phone number
+ */
+export const formatPhoneNumber = (phone) => {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
   
-  const parts = name.trim().split(' ');
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  if (cleaned.length === 10) {
+    return `+91 ${cleaned.substring(0, 5)} ${cleaned.substring(5)}`;
+  }
   
-  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+  return phone;
+};
+
+/**
+ * Get status badge color
+ */
+export const getStatusColor = (status) => {
+  const statusColors = {
+    active: 'green',
+    inactive: 'gray',
+    pending: 'yellow',
+    suspended: 'orange',
+    cancelled: 'red',
+    expired: 'red',
+    completed: 'green',
+    failed: 'red',
+    processing: 'blue',
+    paid: 'green',
+    overdue: 'red',
+    draft: 'gray',
+  };
+  
+  return statusColors[status?.toLowerCase()] || 'gray';
 };
 
 /**
  * Download file from blob
- * @param {Blob} blob - Blob data
- * @param {string} filename - Filename for download
  */
-export const downloadBlob = (blob, filename) => {
+export const downloadFile = (blob, filename) => {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -129,204 +172,20 @@ export const downloadBlob = (blob, filename) => {
 
 /**
  * Copy text to clipboard
- * @param {string} text - Text to copy
- * @returns {Promise<boolean>} Success status
  */
 export const copyToClipboard = async (text) => {
   try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } else {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return true;
-    }
+    await navigator.clipboard.writeText(text);
+    return true;
   } catch (error) {
-    console.error('Error copying to clipboard:', error);
+    console.error('Failed to copy:', error);
     return false;
   }
 };
 
 /**
- * Get URL query parameters as object
- * @param {string} search - URL search string (optional)
- * @returns {object} Query parameters object
+ * Sleep/delay function
  */
-export const getQueryParams = (search = window.location.search) => {
-  const params = new URLSearchParams(search);
-  const result = {};
-  
-  for (const [key, value] of params.entries()) {
-    result[key] = value;
-  }
-  
-  return result;
-};
-
-/**
- * Build URL query string from object
- * @param {object} params - Parameters object
- * @returns {string} Query string
- */
-export const buildQueryString = (params) => {
-  const searchParams = new URLSearchParams();
-  
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== null && value !== undefined && value !== '') {
-      searchParams.append(key, value);
-    }
-  });
-  
-  return searchParams.toString();
-};
-
-/**
- * Debounce function
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
- */
-export const debounce = (func, wait = 300) => {
-  let timeout;
-  
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
-
-/**
- * Throttle function
- * @param {Function} func - Function to throttle
- * @param {number} limit - Limit in milliseconds
- * @returns {Function} Throttled function
- */
-export const throttle = (func, limit = 300) => {
-  let inThrottle;
-  
-  return function(...args) {
-    if (!inThrottle) {
-      func.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
-    }
-  };
-};
-
-/**
- * Check if value is valid email
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
- */
-export const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-/**
- * Check if value is valid phone number (Indian)
- * @param {string} phone - Phone number to validate
- * @returns {boolean} True if valid
- */
-export const isValidPhone = (phone) => {
-  const phoneRegex = /^[6-9]\d{9}$/;
-  const cleaned = phone.replace(/\D/g, '');
-  return phoneRegex.test(cleaned);
-};
-
-/**
- * Calculate percentage
- * @param {number} value - Current value
- * @param {number} total - Total value
- * @param {number} decimals - Decimal places (default: 1)
- * @returns {number} Percentage
- */
-export const calculatePercentage = (value, total, decimals = 1) => {
-  if (!total || total === 0) return 0;
-  return parseFloat(((value / total) * 100).toFixed(decimals));
-};
-
-/**
- * Group array of objects by key
- * @param {Array} array - Array to group
- * @param {string} key - Key to group by
- * @returns {object} Grouped object
- */
-export const groupBy = (array, key) => {
-  return array.reduce((result, item) => {
-    const group = item[key];
-    result[group] = result[group] || [];
-    result[group].push(item);
-    return result;
-  }, {});
-};
-
-/**
- * Sort array of objects by key
- * @param {Array} array - Array to sort
- * @param {string} key - Key to sort by
- * @param {string} order - 'asc' or 'desc' (default: 'asc')
- * @returns {Array} Sorted array
- */
-export const sortBy = (array, key, order = 'asc') => {
-  return [...array].sort((a, b) => {
-    const aVal = a[key];
-    const bVal = b[key];
-    
-    if (aVal < bVal) return order === 'asc' ? -1 : 1;
-    if (aVal > bVal) return order === 'asc' ? 1 : -1;
-    return 0;
-  });
-};
-
-/**
- * Remove duplicates from array
- * @param {Array} array - Array to deduplicate
- * @param {string} key - Key to check for uniqueness (for objects)
- * @returns {Array} Deduplicated array
- */
-export const uniqueArray = (array, key = null) => {
-  if (!key) {
-    return [...new Set(array)];
-  }
-  
-  return Array.from(new Map(array.map(item => [item[key], item])).values());
-};
-
-export default {
-  cn,
-  sleep,
-  generateId,
-  deepClone,
-  isEmpty,
-  capitalize,
-  toTitleCase,
-  toCamelCase,
-  toSnakeCase,
-  getInitials,
-  downloadBlob,
-  copyToClipboard,
-  getQueryParams,
-  buildQueryString,
-  debounce,
-  throttle,
-  isValidEmail,
-  isValidPhone,
-  calculatePercentage,
-  groupBy,
-  sortBy,
-  uniqueArray,
+export const sleep = (ms) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
 };
