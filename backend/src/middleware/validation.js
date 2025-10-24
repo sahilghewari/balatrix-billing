@@ -297,9 +297,71 @@ const schemas = {
     startDate: Joi.date().iso().optional(),
     endDate: Joi.date().iso().optional(),
   }),
+
+  // Extension schemas
+  createExtension: Joi.object({
+    tenantId: Joi.string().uuid().required()
+      .messages({
+        'any.required': 'Tenant ID is required',
+        'string.uuid': 'Tenant ID must be a valid UUID',
+      }),
+    extension: Joi.string().pattern(/^[0-9]{3,10}$/).required()
+      .messages({
+        'any.required': 'Extension number is required',
+        'string.pattern.base': 'Extension must be 3-10 digits',
+      }),
+    password: Joi.string().min(6).max(255).required()
+      .messages({
+        'any.required': 'Password is required',
+        'string.min': 'Password must be at least 6 characters',
+        'string.max': 'Password must be less than 255 characters',
+      }),
+    displayName: Joi.string().max(100).optional()
+      .messages({
+        'string.max': 'Display name must be less than 100 characters',
+      }),
+    config: Joi.object().optional(),
+  }),
+
+  updateExtension: Joi.object({
+    extension: Joi.string().pattern(/^[0-9]{3,10}$/).optional()
+      .messages({
+        'string.pattern.base': 'Extension must be 3-10 digits',
+      }),
+    password: Joi.string().min(6).max(255).optional()
+      .messages({
+        'string.min': 'Password must be at least 6 characters',
+        'string.max': 'Password must be less than 255 characters',
+      }),
+    displayName: Joi.string().max(100).optional()
+      .messages({
+        'string.max': 'Display name must be less than 100 characters',
+      }),
+    isActive: Joi.boolean().optional(),
+    config: Joi.object().optional(),
+  }).min(1),
+
+  resetExtensionPassword: Joi.object({
+    newPassword: Joi.string().min(6).max(255).required()
+      .messages({
+        'any.required': 'New password is required',
+        'string.min': 'Password must be at least 6 characters',
+        'string.max': 'Password must be less than 255 characters',
+      }),
+  }),
 };
+
+/**
+ * Validation middleware functions
+ */
+const validateExtension = validate(schemas.createExtension);
+const validateExtensionUpdate = validate(schemas.updateExtension);
+const validateResetExtensionPassword = validate(schemas.resetExtensionPassword);
 
 module.exports = {
   validate,
   schemas,
+  validateExtension,
+  validateExtensionUpdate,
+  validateResetExtensionPassword,
 };

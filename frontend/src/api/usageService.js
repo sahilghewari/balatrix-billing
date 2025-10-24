@@ -11,7 +11,7 @@ const usageService = {
    */
   getCurrentUsage: async (subscriptionId) => {
     const response = await api.get(`/subscriptions/${subscriptionId}/usage`);
-    return response;
+    return response.data.data;
   },
 
   /**
@@ -21,7 +21,7 @@ const usageService = {
     const response = await api.get(`/subscriptions/${subscriptionId}/usage/history`, {
       params: { page, limit },
     });
-    return response;
+    return response.data.data;
   },
 
   /**
@@ -29,7 +29,7 @@ const usageService = {
    */
   getUsageSummary: async (subscriptionId) => {
     const response = await api.get(`/subscriptions/${subscriptionId}/usage/summary`);
-    return response;
+    return response.data.data;
   },
 };
 

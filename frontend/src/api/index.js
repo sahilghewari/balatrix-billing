@@ -6,6 +6,8 @@ export { default as axiosInstance } from './axios';
 export { default as authService } from './authService';
 export * as planService from './planService';
 export * as subscriptionService from './subscriptionService';
+export { default as tenantService } from './tenantService';
+export { default as extensionService } from './extensionService';
 
 // Future service exports will go here
 // export { default as customerService } from './customerService';

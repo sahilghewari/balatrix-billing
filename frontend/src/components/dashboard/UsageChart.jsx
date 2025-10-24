@@ -20,7 +20,7 @@ const UsageChart = ({ subscriptionId }) => {
       setLoading(true);
       setError(null);
       const data = await usageService.getUsageHistory(subscriptionId, 1, 6); // Get last 6 periods
-      setHistoryData(data.usageHistory || []);
+      setHistoryData(data || []);
     } catch (err) {
       console.error('Error fetching usage history:', err);
       setError(err.message || 'Failed to load usage history');

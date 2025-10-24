@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
+import AdminRoute from './components/AdminRoute';
 import {
   LoginPage,
   RegisterPage,
@@ -18,6 +19,11 @@ import {
 } from './pages';
 import PlansPage from './pages/PlansPage';
 import CheckoutPage from './pages/CheckoutPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import TenantsPage from './pages/TenantsPage';
+import ExtensionsPage from './pages/ExtensionsPage';
+import TenantForm from './pages/TenantForm';
+import ExtensionForm from './pages/ExtensionForm';
 import './App.css';
 
 function App() {
@@ -112,12 +118,87 @@ function App() {
             }
           />
 
-          {/* Future routes will go here */}
-          {/* 
-          <Route path="/customers" element={<PrivateRoute><CustomersPage /></PrivateRoute>} />
-          <Route path="/invoices" element={<PrivateRoute><InvoicesPage /></PrivateRoute>} />
-          <Route path="/payments" element={<PrivateRoute><PaymentsPage /></PrivateRoute>} />
-          */}
+          {/* Admin Routes */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminRoute>
+                <AdminDashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/tenants"
+            element={
+              <AdminRoute>
+                <TenantsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/tenants/new"
+            element={
+              <AdminRoute>
+                <TenantForm />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/tenants/:id/edit"
+            element={
+              <AdminRoute>
+                <TenantForm />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/tenants/:id"
+            element={
+              <AdminRoute>
+                <TenantsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/extensions"
+            element={
+              <AdminRoute>
+                <ExtensionsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/extensions/new"
+            element={
+              <AdminRoute>
+                <ExtensionForm />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/extensions/:id/edit"
+            element={
+              <AdminRoute>
+                <ExtensionForm />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/extensions/:id"
+            element={
+              <AdminRoute>
+                <ExtensionsPage />
+              </AdminRoute>
+            }
+          />
 
           {/* 404 Not Found */}
           <Route

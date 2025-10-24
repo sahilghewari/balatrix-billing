@@ -51,8 +51,8 @@ const PlansPage = () => {
     try {
       setLoading(true);
       const response = await planService.getPublicPlans();
-      // response is already unwrapped by axios interceptor
-      setPlans(response.data || []);
+      // response is the actual data array
+      setPlans(response || []);
     } catch (error) {
       console.error('Error fetching plans:', error);
       toast.error('Failed to load plans. Please try again.');
@@ -64,8 +64,8 @@ const PlansPage = () => {
   const fetchCurrentSubscription = async () => {
     try {
       const response = await subscriptionService.getMySubscription();
-      // response is already unwrapped by axios interceptor
-      setCurrentSubscription(response.data);
+      // response is the actual subscription data
+      setCurrentSubscription(response);
     } catch (error) {
       // User doesn't have a subscription yet, which is fine
       console.log('No active subscription found');
@@ -82,7 +82,7 @@ const PlansPage = () => {
         billingCycle,
         addons, // Send as object: {extraTollFreeNumbers: 1, extraExtensions: 1}
       });
-      setCalculatedPrice(response.data);
+      setCalculatedPrice(response);
     } catch (error) {
       console.error('Error calculating price:', error);
       toast.error('Failed to calculate price');

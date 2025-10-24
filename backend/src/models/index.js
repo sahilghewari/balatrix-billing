@@ -22,6 +22,11 @@ const InvoiceLineItem = require('./InvoiceLineItem');
 const RefreshToken = require('./RefreshToken');
 const LoginAttempt = require('./LoginAttempt');
 const SystemLog = require('./SystemLog');
+const Tenant = require('./Tenant');
+const Extension = require('./Extension');
+const KamailioExtension = require('./KamailioExtension');
+const TollFreeNumber = require('./TollFreeNumber');
+const RoutingRule = require('./RoutingRule');
 
 // Define associations
 
@@ -129,6 +134,27 @@ SystemLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Customer.hasMany(SystemLog, { foreignKey: 'customerId', as: 'systemLogs' });
 SystemLog.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 
+// Multi-tenant associations
+// User <-> Tenant (One-to-Many - creator)
+User.hasMany(Tenant, { foreignKey: 'createdBy', as: 'createdTenants' });
+Tenant.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+// Tenant <-> TollFreeNumber (One-to-Many)
+Tenant.hasMany(TollFreeNumber, { foreignKey: 'tenantId', as: 'tollFreeNumbers' });
+TollFreeNumber.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
+
+// Tenant <-> RoutingRule (One-to-Many)
+Tenant.hasMany(RoutingRule, { foreignKey: 'tenantId', as: 'routingRules' });
+RoutingRule.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
+
+// TollFreeNumber <-> RoutingRule (One-to-Many)
+TollFreeNumber.hasMany(RoutingRule, { foreignKey: 'tollFreeNumberId', as: 'routingRules' });
+RoutingRule.belongsTo(TollFreeNumber, { foreignKey: 'tollFreeNumberId', as: 'tollFreeNumber' });
+
+// Note: Extension model uses kamailioSequelize, so associations with main db models need careful handling
+// Extension belongs to Tenant (cross-database reference)
+Extension.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
+
 // Export all models
 module.exports = {
   sequelize,
@@ -148,4 +174,9 @@ module.exports = {
   RefreshToken,
   LoginAttempt,
   SystemLog,
+  Tenant,
+  Extension,
+  KamailioExtension,
+  TollFreeNumber,
+  RoutingRule,
 };

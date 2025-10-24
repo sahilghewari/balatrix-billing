@@ -11,7 +11,7 @@ import api from './axios';
  */
 export const getMySubscription = async () => {
   const response = await api.get('/subscriptions/my-subscription');
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -25,7 +25,7 @@ export const getMySubscription = async () => {
  */
 export const createSubscriptionWithPayment = async (subscriptionData) => {
   const response = await api.post('/subscriptions/create-with-payment', subscriptionData);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -38,7 +38,7 @@ export const createSubscriptionWithPayment = async (subscriptionData) => {
  */
 export const verifyPayment = async (paymentData) => {
   const response = await api.post('/subscriptions/verify-payment', paymentData);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -48,7 +48,7 @@ export const verifyPayment = async (paymentData) => {
  */
 export const getSubscriptionById = async (subscriptionId) => {
   const response = await api.get(`/subscriptions/${subscriptionId}`);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -58,7 +58,7 @@ export const getSubscriptionById = async (subscriptionId) => {
  */
 export const cancelSubscription = async (subscriptionId) => {
   const response = await api.post(`/subscriptions/${subscriptionId}/cancel`);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -71,7 +71,7 @@ export const cancelSubscription = async (subscriptionId) => {
  */
 export const changeSubscriptionPlan = async (subscriptionId, newPlanData) => {
   const response = await api.post(`/subscriptions/${subscriptionId}/change-plan`, newPlanData);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -81,5 +81,5 @@ export const changeSubscriptionPlan = async (subscriptionId, newPlanData) => {
  */
 export const getSubscriptionUsage = async (subscriptionId) => {
   const response = await api.get(`/subscriptions/${subscriptionId}/usage`);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };

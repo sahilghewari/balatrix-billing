@@ -40,6 +40,8 @@ const paymentRoutes = require('./routes/payments');
 const cdrRoutes = require('./routes/cdrs');
 const invoiceRoutes = require('./routes/invoices');
 const monitoringRoutes = require('./routes/monitoring');
+const tenantRoutes = require('./routes/tenants');
+const extensionRoutes = require('./routes/extensions');
 
 // Initialize Express app
 const app = express();
@@ -156,6 +158,8 @@ app.use('/api/rate-plans', ratePlanRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cdrs', cdrRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/extensions', extensionRoutes);
 // TODO: Add more routes
 // app.use('/api/reports', reportRoutes);
 // app.use('/api/dids', didRoutes);
@@ -178,6 +182,8 @@ app.get('/', (req, res) => {
       payments: '/api/payments',
       cdrs: '/api/cdrs',
       invoices: '/api/invoices',
+      tenants: '/api/tenants',
+      extensions: '/api/extensions',
     },
   });
 });
@@ -205,14 +211,26 @@ const initializeDatabase = async () => {
     logger.info('Starting database initialization...');
     await testConnection();
     logger.info('Database connection test passed');
-    
+
     if (process.env.NODE_ENV === 'development') {
       // Sync models in development (use migrations in production)
       logger.info('Syncing database models...');
       await syncDatabase();
       logger.info('Database models synced');
     }
-    
+
+    // Initialize Kamailio database tables
+    logger.info('Initializing Kamailio database tables...');
+    const kamailioService = require('./services/kamailioService');
+    const kamailioResult = await kamailioService.initializeTables();
+    if (kamailioResult.success) {
+      logger.info('Kamailio database tables initialized');
+    } else if (kamailioResult.skipped) {
+      logger.warn('Kamailio database initialization skipped:', kamailioResult.reason);
+    } else {
+      logger.error('Kamailio database initialization failed:', kamailioResult.error);
+    }
+
     logger.info('Database initialized successfully');
   } catch (error) {
     logger.error('Database initialization failed:', error);

@@ -46,7 +46,7 @@ const authenticate = async (req, res, next) => {
 
       // Attach user to request
       req.user = user;
-      req.userId = user.userId;
+      req.userId = user.id;
       req.userRole = user.role;
 
       next();

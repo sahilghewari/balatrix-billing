@@ -121,7 +121,7 @@ const CheckoutPage = () => {
         customerData,
       });
 
-      const { orderId, subscriptionId, amount, currency, key, customer } = response.data;
+      const { orderId, subscriptionId, amount, currency, key, customer } = response;
 
       // Configure Razorpay options
       const options = {

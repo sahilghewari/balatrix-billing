@@ -27,7 +27,7 @@ const DashboardPage = () => {
     try {
       setLoading(true);
       const response = await subscriptionService.getMySubscription();
-      setSubscription(response.data);
+      setSubscription(response);
     } catch (error) {
       console.error('Error fetching subscription:', error);
       // User doesn't have subscription yet

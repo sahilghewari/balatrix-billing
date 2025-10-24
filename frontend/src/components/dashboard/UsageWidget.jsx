@@ -23,7 +23,7 @@ const UsageWidget = ({ subscriptionId }) => {
     try {
       setLoading(true);
       const response = await usageService.getCurrentUsage(subscriptionId);
-      setUsage(response.data);
+      setUsage(response);
       setError(null);
     } catch (err) {
       console.error('Error fetching usage:', err);

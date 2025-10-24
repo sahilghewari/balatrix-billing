@@ -6,7 +6,7 @@ import api from './axios';
  */
 export const getPublicPlans = async () => {
   const response = await api.get('/rate-plans/public');
-  return response; // Axios interceptor already returns response.data
+  return response.data; // Return the actual data array
 };
 
 /**
@@ -16,7 +16,7 @@ export const getPublicPlans = async () => {
  */
 export const getPlanById = async (planId) => {
   const response = await api.get(`/rate-plans/${planId}`);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -26,7 +26,7 @@ export const getPlanById = async (planId) => {
  */
 export const getPlanByCode = async (planCode) => {
   const response = await api.get(`/rate-plans/code/${planCode}`);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -39,7 +39,7 @@ export const getPlanByCode = async (planCode) => {
  */
 export const calculatePrice = async (priceData) => {
   const response = await api.post('/rate-plans/calculate-price', priceData);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -48,7 +48,7 @@ export const calculatePrice = async (priceData) => {
  */
 export const getAllPlans = async () => {
   const response = await api.get('/rate-plans');
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -58,7 +58,7 @@ export const getAllPlans = async () => {
  */
 export const createPlan = async (planData) => {
   const response = await api.post('/rate-plans', planData);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -69,7 +69,7 @@ export const createPlan = async (planData) => {
  */
 export const updatePlan = async (planId, planData) => {
   const response = await api.put(`/rate-plans/${planId}`, planData);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
 
 /**
@@ -79,5 +79,5 @@ export const updatePlan = async (planId, planData) => {
  */
 export const deletePlan = async (planId) => {
   const response = await api.delete(`/rate-plans/${planId}`);
-  return response; // Axios interceptor already returns response.data
+  return response.data.data; // Return the actual data
 };
