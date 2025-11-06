@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2, Check, Plus } from 'lucide-react';
 import { planService, subscriptionService } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import PlanCard from '../components/plans/PlanCard';
@@ -21,7 +21,7 @@ const PlansPage = () => {
   
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState('quarterly');
+  const [billingCycle, setBillingCycle] = useState('monthly');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [addons, setAddons] = useState({
     extraTollFreeNumbers: 0,
@@ -51,8 +51,9 @@ const PlansPage = () => {
     try {
       setLoading(true);
       const response = await planService.getPublicPlans();
-      // response is the actual data array
-      setPlans(response || []);
+      // Filter to only include plans with planName and sort by displayOrder
+      const filteredPlans = (response || []).filter(plan => plan.planName).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      setPlans(filteredPlans);
     } catch (error) {
       console.error('Error fetching plans:', error);
       toast.error('Failed to load plans. Please try again.');
@@ -75,20 +76,39 @@ const PlansPage = () => {
   const calculatePrice = async () => {
     if (!selectedPlan) return;
 
-    try {
-      setCalculating(true);
-      const response = await planService.calculatePrice({
-        planId: selectedPlan.id,
-        billingCycle,
-        addons, // Send as object: {extraTollFreeNumbers: 1, extraExtensions: 1}
-      });
-      setCalculatedPrice(response);
-    } catch (error) {
-      console.error('Error calculating price:', error);
-      toast.error('Failed to calculate price');
-    } finally {
-      setCalculating(false);
-    }
+    setCalculating(true);
+    
+    // Fallback: calculate basic price on frontend
+    const monthlyPrice = parseFloat(selectedPlan.monthlyPrice) || 349;
+    const basePrice = billingCycle === 'monthly' ? monthlyPrice :
+                     billingCycle === 'quarterly' ? monthlyPrice * 3 :
+                     (parseFloat(selectedPlan.annualPrice) || monthlyPrice * 12);
+    
+    const addonsCost = ((addons.extraTollFreeNumbers || 0) * 199) + ((addons.extraExtensions || 0) * 99);
+    const subtotal = basePrice + addonsCost;
+    const gstAmount = subtotal * 0.18;
+    const total = subtotal + gstAmount;
+    
+    setCalculatedPrice({
+      plan: {
+        id: selectedPlan.id,
+        name: selectedPlan.planName,
+        type: selectedPlan.planType,
+      },
+      billingCycle,
+      pricing: {
+        basePrice: Number(basePrice),
+        addonsCost: Number(addonsCost),
+        subtotal: Number(subtotal),
+        gstAmount: Number(gstAmount),
+        gstPercentage: 18,
+        totalAmount: Number(total),
+      },
+      addons: [],
+      currency: 'INR',
+    });
+    
+    setCalculating(false);
   };
 
   const handlePlanSelect = (plan) => {
@@ -111,12 +131,27 @@ const PlansPage = () => {
       return;
     }
 
-    // Navigate to checkout page with selected plan and pricing
-    navigate('/checkout', {
+    // Convert addons object to array format for backend
+    const addonsArray = [];
+    if (addons.extraTollFreeNumbers > 0) {
+      addonsArray.push({
+        code: 'extraTollFreeNumbers',
+        quantity: addons.extraTollFreeNumbers,
+      });
+    }
+    if (addons.extraExtensions > 0) {
+      addonsArray.push({
+        code: 'extraExtensions',
+        quantity: addons.extraExtensions,
+      });
+    }
+
+    // Navigate to toll-free number selection page with selected plan and pricing
+    navigate('/select-number', {
       state: {
         plan: selectedPlan,
         billingCycle,
-        addons,
+        addons: addonsArray,
         pricing: calculatedPrice,
       },
     });
@@ -225,9 +260,9 @@ const PlansPage = () => {
                 <div className="space-y-4">
                   {/* Base Price */}
                   <div className="flex justify-between text-gray-700">
-                    <span>{selectedPlan.planName} ({billingCycle})</span>
+                    <span>{selectedPlan.planName || selectedPlan.name || 'Selected Plan'} ({billingCycle})</span>
                     <span className="font-semibold">
-                      ₹{(calculatedPrice.pricing?.basePrice || 0).toLocaleString('en-IN')}
+                      ₹{Number(calculatedPrice.pricing?.basePrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -241,7 +276,7 @@ const PlansPage = () => {
                             <span>
                               {addon.name} (×{addon.quantity})
                             </span>
-                            <span>₹{(addon.totalPrice || 0).toLocaleString('en-IN')}</span>
+                            <span>₹{Number(addon.totalPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         ))}
                       </div>
@@ -253,7 +288,7 @@ const PlansPage = () => {
                     <div className="flex justify-between text-gray-700">
                       <span>Setup Fee</span>
                       <span className="font-semibold">
-                        ₹{(calculatedPrice.pricing.setupFee || 0).toLocaleString('en-IN')}
+                        ₹{Number(calculatedPrice.pricing.setupFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   )}
@@ -262,7 +297,7 @@ const PlansPage = () => {
                   <div className="border-t border-gray-300 pt-4 flex justify-between text-gray-700">
                     <span>Subtotal</span>
                     <span className="font-semibold">
-                      ₹{(calculatedPrice.pricing?.subtotal || 0).toLocaleString('en-IN')}
+                      ₹{Number(calculatedPrice.pricing?.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -270,7 +305,7 @@ const PlansPage = () => {
                   <div className="flex justify-between text-gray-700">
                     <span>GST ({calculatedPrice.pricing?.gstPercentage || 18}%)</span>
                     <span className="font-semibold">
-                      ₹{(calculatedPrice.pricing?.gstAmount || 0).toLocaleString('en-IN')}
+                      ₹{Number(calculatedPrice.pricing?.gstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -278,7 +313,7 @@ const PlansPage = () => {
                   <div className="border-t-2 border-gray-400 pt-4 flex justify-between items-center">
                     <span className="text-xl font-bold text-gray-900">Total</span>
                     <span className="text-3xl font-bold text-blue-600">
-                      ₹{(calculatedPrice.pricing?.totalAmount || 0).toLocaleString('en-IN')}
+                      ₹{Number(calculatedPrice.pricing?.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -310,6 +345,101 @@ const PlansPage = () => {
             </Card>
           </div>
         )}
+
+        {/* Pay as you Go Plans Section */}
+        <div className="mt-16 max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Pay as you Go Plans
+            </h2>
+            <p className="text-lg text-gray-600">
+              Extend your plan with additional services tailored to your specific needs
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Additional TFN */}
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Additional TFN
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Extra toll-free numbers beyond your plan limit
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pay As You Go</span>
+                  <span className="font-semibold text-gray-900">₹199</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">per month</span>
+                  <span className="text-sm text-gray-500">One-Time Charge</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">₹99</span>
+                  <span className="text-sm text-gray-500">one-time setup</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Additional Extension */}
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Additional Extension
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Extra extensions beyond your plan limit
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pay As You Go</span>
+                  <span className="font-semibold text-gray-900">₹199</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">per month</span>
+                  <span className="text-sm text-gray-500">One-Time Charge</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">₹99</span>
+                  <span className="text-sm text-gray-500">one-time setup</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Per Minute Charge */}
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Per Minute Charge
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Additional calling minutes when you exceed your plan
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pay As You Go</span>
+                  <span className="font-semibold text-gray-900">₹1.99</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">per minute</span>
+                  <span className="text-sm text-gray-500">One-Time Charge</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">—</span>
+                  <span className="text-sm text-gray-500">—</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
 
         {/* Features Comparison */}
         <div className="mt-16 max-w-6xl mx-auto">
@@ -347,13 +477,13 @@ const PlansPage = () => {
                   })}
                 </tr>
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">Included Minutes</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">Included Credit</td>
                   {plans.map((plan) => {
                     const limits = typeof plan.limits === 'string' ? JSON.parse(plan.limits) : plan.limits;
                     const features = typeof plan.features === 'string' ? JSON.parse(plan.features) : plan.features;
                     return (
                       <td key={plan.id} className="px-6 py-4 text-center text-sm font-semibold">
-                        {limits?.monthlyMinuteAllowance || features?.freeMinutes || '-'}
+                        ₹{(limits?.monthlyCreditAllowance || features?.freeCredit || 0).toLocaleString('en-IN')}
                       </td>
                     );
                   })}

@@ -18,9 +18,9 @@ const extensionService = {
     return response.data;
   },
 
-  // Get extension by ID
-  getExtension: async (extensionId) => {
-    const response = await axios.get(`/extensions/${extensionId}`);
+  // Get current user's extensions
+  getMyExtensions: async () => {
+    const response = await axios.get('/extensions/my-extensions');
     return response.data;
   },
 
@@ -54,10 +54,31 @@ const extensionService = {
     return response.data;
   },
 
-  // Reset extension password
+  // Reset extension password (admin only)
   resetExtensionPassword: async (extensionId, newPassword) => {
     const response = await axios.post(`/extensions/${extensionId}/reset-password`, { newPassword });
     return response.data.data;
+  },
+
+  // Customer-specific extension management
+  resetMyExtensionPassword: async (extensionId, newPassword) => {
+    const response = await axios.post(`/extensions/my-extensions/${extensionId}/reset-password`, { newPassword });
+    return response.data;
+  },
+
+  syncMyExtension: async (extensionId) => {
+    const response = await axios.post(`/extensions/my-extensions/${extensionId}/sync`, {});
+    return response.data;
+  },
+
+  getMyExtensionPassword: async (extensionId) => {
+    const response = await axios.get(`/extensions/my-extensions/${extensionId}/password`);
+    return response.data;
+  },
+
+  updateMyExtensionPassword: async (extensionId, newPassword) => {
+    const response = await axios.put(`/extensions/my-extensions/${extensionId}/password`, { newPassword });
+    return response.data;
   },
 };
 

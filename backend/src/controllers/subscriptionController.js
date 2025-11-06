@@ -161,7 +161,9 @@ exports.getCustomerSubscriptions = asyncHandler(async (req, res) => {
  */
 exports.createSubscriptionWithPayment = asyncHandler(async (req, res) => {
   const userId = req.user.id; // From auth middleware
-  const { planId, billingCycle, addons, customerData } = req.body;
+  const { planId, billingCycle, addons, customerData, selectedNumbers } = req.body;
+
+  console.log('Received data:', { planId, billingCycle, addons, customerData, selectedNumbers });
 
   const result = await subscriptionService.createSubscriptionWithPayment({
     userId,
@@ -169,6 +171,7 @@ exports.createSubscriptionWithPayment = asyncHandler(async (req, res) => {
     billingCycle,
     addons,
     customerData,
+    selectedNumbers,
   });
 
   return createdResponse(res, result, 'Subscription order created successfully');
@@ -209,6 +212,17 @@ exports.getMySubscription = asyncHandler(async (req, res) => {
   }
   
   return successResponse(res, subscription, 'Subscription retrieved successfully');
+});
+
+/**
+ * Get current user's dashboard stats
+ * GET /api/subscriptions/my-dashboard
+ */
+exports.getMyDashboard = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const dashboardData = await subscriptionService.getUserDashboardStats(userId);
+  
+  return successResponse(res, dashboardData, 'Dashboard stats retrieved successfully');
 });
 
 module.exports = exports;

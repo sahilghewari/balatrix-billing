@@ -25,6 +25,15 @@ const Subscription = sequelize.define(
       },
       onDelete: 'CASCADE',
     },
+    tenantId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'Tenants',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
     accountId: {
       type: DataTypes.UUID,
       allowNull: false,

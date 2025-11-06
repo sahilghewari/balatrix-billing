@@ -12,7 +12,7 @@ module.exports = {
       },
       tenantId: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true, // Allow null for unassigned numbers
         references: {
           model: 'Tenants',
           key: 'id',

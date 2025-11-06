@@ -20,9 +20,25 @@ class RatePlanService {
           isPublic: true,
         },
         order: [['displayOrder', 'ASC']],
-        attributes: {
-          exclude: ['createdAt', 'updatedAt'],
-        },
+        attributes: [
+          'id',
+          'planCode',
+          'planName',
+          'planType',
+          'monthlyPrice',
+          'annualPrice',
+          'currency',
+          'features',
+          'limits',
+          'billingCycle',
+          'trialDays',
+          'setupFee',
+          'isActive',
+          'isPublic',
+          'displayOrder',
+          'description',
+          'metadata',
+        ],
       });
 
       return plans;

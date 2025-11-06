@@ -21,6 +21,13 @@ router.get(
   subscriptionController.getMySubscription
 );
 
+// Get current user's dashboard stats (must be before /:id routes)
+router.get(
+  '/my-dashboard',
+  authenticate,
+  subscriptionController.getMyDashboard
+);
+
 // Create subscription with payment (Razorpay) (must be before /:id routes)
 router.post(
   '/create-with-payment',

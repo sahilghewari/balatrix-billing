@@ -4,6 +4,7 @@
  */
 
 const { sequelize } = require('../config/database');
+const { Sequelize } = require('sequelize');
 const {
   Subscription,
   SubscriptionUsage,
@@ -642,10 +643,170 @@ class SubscriptionService {
       [SUBSCRIPTION_STATUS.EXPIRED]: [], // Cannot transition from expired
     };
 
-    if (!validTransitions[currentStatus]?.includes(newStatus)) {
-      throw new ValidationError(
-        `Invalid status transition from ${currentStatus} to ${newStatus}`
+  }
+
+  /**
+   * Create subscription with payment (Razorpay)
+   */
+  async createSubscriptionWithPayment({
+    userId,
+    planId,
+    billingCycle,
+    addons = [],
+    customerData,
+    selectedNumbers = [],
+  }) {
+    const transaction = await sequelize.transaction();
+    const crypto = require('crypto');
+    const { createOrder } = require('../config/razorpay');
+
+    try {
+      // Get plan details
+      const RatePlan = require('../models').RatePlan;
+      const plan = await RatePlan.findByPk(planId);
+      if (!plan) {
+        throw new NotFoundError('Plan not found');
+      }
+
+      // Calculate pricing
+      const pricing = await this.calculateSubscriptionPricing({
+        plan,
+        billingCycle,
+        addons,
+        selectedNumbers,
+      });
+
+      // Find or create customer
+      let customer = await Customer.findOne({
+        where: { userId },
+        transaction,
+      });
+
+      if (!customer && customerData) {
+        // Use default tenant for now - in production this should come from user or organization
+        const defaultTenantId = '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea'; // Default tenant ID
+        
+        customer = await Customer.create(
+          {
+            userId,
+            tenantId: defaultTenantId,
+            companyName: customerData.company || null,
+            businessType: customerData.businessType || 'individual',
+            billingCountry: customerData.country || 'India',
+            status: 'active',
+            creditLimit: 0,
+            kycStatus: 'pending',
+            taxExempt: false,
+          },
+          { transaction }
+        );
+      } else if (!customer) {
+        throw new ValidationError(
+          'Customer data required for first subscription'
+        );
+      }
+
+      // Create or get account
+      let account = await Account.findOne({
+        where: { customerId: customer.id, status: 'active' },
+        transaction,
+      });
+
+      if (!account) {
+        account = await Account.create(
+          {
+            customerId: customer.id,
+            tenantId: customer.tenantId,
+            accountNumber: `ACC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            status: 'active',
+            balance: 0,
+            creditLimit: 0,
+            currency: pricing.currency,
+          },
+          { transaction }
+        );
+      }
+
+      // Create Razorpay order
+      const receiptId = `rcpt_${Date.now()}`;
+      const razorpayOrder = await createOrder({
+        amount: pricing.pricing.totalAmount, // Amount in rupees (will be converted to paise in createOrder)
+        currency: pricing.currency,
+        receipt: receiptId,
+        notes: {
+          userId: user.id,
+          customerId: customer.id,
+          planId: pricing.plan.id,
+          planName: pricing.plan.name,
+          billingCycle,
+          addons: JSON.stringify(addons),
+          selectedNumbers: JSON.stringify(selectedNumbers),
+        },
+      });
+
+      // Generate subscription number
+      const subscriptionNumber = `SUB-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+      
+      // Calculate billing dates
+      const startDate = new Date();
+      const billingDates = getBillingCycleDates(startDate, billingCycle);
+
+      // Create pending subscription record
+      const subscription = await Subscription.create(
+        {
+          customerId: customer.id,
+          tenantId: customer.tenantId,
+          accountId: account.id,
+          planId: planId, // Use planId, not ratePlanId
+          subscriptionNumber: subscriptionNumber,
+          status: 'pending',
+          billingCycle,
+          billingAmount: pricing.pricing.totalAmount,
+          currency: pricing.currency,
+          startDate: startDate,
+          currentPeriodStart: billingDates.periodStart,
+          currentPeriodEnd: billingDates.periodEnd,
+          nextBillingDate: billingDates.nextBillingDate,
+          autoRenew: true,
+          metadata: {
+            razorpayOrderId: razorpayOrder.id,
+            pricing: pricing,
+            addons: addons,
+            selectedNumbers: selectedNumbers,
+          },
+        },
+        { transaction }
       );
+
+      await transaction.commit();
+
+      logger.info('Subscription with payment created', {
+        subscriptionId: subscription.id,
+        userId,
+        planId,
+        amount: pricing.pricing.totalAmount,
+        selectedNumbersCount: selectedNumbers.length,
+      });
+
+      return {
+        orderId: razorpayOrder.id,
+        subscriptionId: subscription.id,
+        amount: pricing.pricing.totalAmount,
+        currency: pricing.currency,
+        key: process.env.RAZORPAY_KEY_ID,
+        customer: {
+          id: customer.id,
+          companyName: customer.companyName,
+        },
+      };
+    } catch (error) {
+      await transaction.rollback();
+      logger.error('Error creating subscription with payment', {
+        userId,
+        planId,
+        error: error.message,
+      });
+      throw error;
     }
   }
 
@@ -674,6 +835,7 @@ class SubscriptionService {
     billingCycle,
     addons = {},
     customerData,
+    selectedNumber,
   }) {
     const transaction = await sequelize.transaction();
     const crypto = require('crypto');
@@ -702,21 +864,20 @@ class SubscriptionService {
       });
 
       if (!customer && customerData) {
+        // Use default tenant for now - in production this should come from user or organization
+        const defaultTenantId = '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea'; // Default tenant ID
+        
         customer = await Customer.create(
           {
             userId,
-            firstName: customerData.firstName || user.username,
-            lastName: customerData.lastName || '',
-            email: user.email,
-            phone: customerData.phone || '',
-            company: customerData.company || '',
-            address: customerData.address || '',
-            city: customerData.city || '',
-            state: customerData.state || '',
-            country: customerData.country || 'IN',
-            postalCode: customerData.postalCode || '',
-            gstNumber: customerData.gstNumber || '',
+            tenantId: defaultTenantId,
+            companyName: customerData.company || null,
+            businessType: customerData.businessType || 'individual',
+            billingCountry: customerData.country || 'India',
             status: 'active',
+            creditLimit: 0,
+            kycStatus: 'pending',
+            taxExempt: false,
           },
           { transaction }
         );
@@ -736,6 +897,7 @@ class SubscriptionService {
         account = await Account.create(
           {
             customerId: customer.id,
+            tenantId: customer.tenantId,
             accountNumber: `ACC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             status: 'active',
             balance: 0,
@@ -773,6 +935,7 @@ class SubscriptionService {
       const subscription = await Subscription.create(
         {
           customerId: customer.id,
+          tenantId: customer.tenantId,
           accountId: account.id,
           planId: planId, // Use planId, not ratePlanId
           subscriptionNumber: subscriptionNumber,
@@ -789,6 +952,7 @@ class SubscriptionService {
             razorpayOrderId: razorpayOrder.id,
             pricing: pricing,
             addons: addons,
+            selectedNumbers: selectedNumbers,
           },
         },
         { transaction }
@@ -975,6 +1139,75 @@ class SubscriptionService {
         { transaction }
       );
 
+      // Assign toll-free numbers if selected
+      const selectedNumbers = subscription.metadata?.selectedNumbers || [];
+      if (selectedNumbers && selectedNumbers.length > 0) {
+        const TollFreeNumber = require('../models').TollFreeNumber;
+        
+        for (const selectedNumber of selectedNumbers) {
+          const tollFreeNumber = await TollFreeNumber.findByPk(selectedNumber.id, { transaction });
+          if (tollFreeNumber && tollFreeNumber.status === 'active') {
+            await tollFreeNumber.update({
+              tenantId: subscription.customer.tenantId,
+              status: 'inactive',
+              assignedAt: new Date(),
+              config: {
+                ...tollFreeNumber.config,
+                subscriptionId: subscription.id,
+                assignedBy: 'subscription_activation',
+              },
+            }, { transaction });
+            
+            logger.info('Toll-free number assigned to customer', {
+              numberId: selectedNumber.id,
+              customerId: subscription.customerId,
+              tenantId: subscription.customer.tenantId,
+              subscriptionId: subscription.id,
+            });
+          }
+        }
+      }
+
+      // Assign extensions based on plan features
+      const extensionsCount = planFeatures.extensions || planLimits.extensions || 0;
+      if (extensionsCount > 0) {
+        const Extension = require('../models').Extension;
+        
+        // Generate extension numbers (simple sequential for now)
+        const existingExtensions = await Extension.count({
+          where: { customerId: subscription.customerId },
+          transaction,
+        });
+        
+        const extensionsToCreate = [];
+        for (let i = 0; i < extensionsCount; i++) {
+          const extensionNumber = (existingExtensions + i + 1).toString().padStart(3, '0');
+          extensionsToCreate.push({
+            customerId: subscription.customerId,
+            tenantId: subscription.tenantId,
+            extensionNumber,
+            displayName: `Extension ${extensionNumber}`,
+            status: 'active',
+            type: 'sip',
+            metadata: {
+              subscriptionId: subscription.id,
+              assignedBy: 'subscription_activation',
+              planName: subscription.plan?.planName,
+            },
+          });
+        }
+        
+        if (extensionsToCreate.length > 0) {
+          await Extension.bulkCreate(extensionsToCreate, { transaction });
+          
+          logger.info('Extensions assigned to customer', {
+            customerId: subscription.customerId,
+            extensionsCount: extensionsToCreate.length,
+            subscriptionId: subscription.id,
+          });
+        }
+      }
+
       // Update account balance if needed
       await subscription.account.update(
         {
@@ -1016,8 +1249,62 @@ class SubscriptionService {
   }
 
   /**
-   * Get user's active subscription
+   * Calculate subscription pricing
    */
+  async calculateSubscriptionPricing({ plan, billingCycle, addons = [], selectedNumbers = [] }) {
+    // Base price
+    const monthlyPrice = parseFloat(plan.monthlyPrice) || 349;
+    let basePrice;
+
+    if (billingCycle === 'monthly') {
+      basePrice = monthlyPrice;
+    } else if (billingCycle === 'quarterly') {
+      basePrice = monthlyPrice * 3;
+    } else if (billingCycle === 'annual') {
+      basePrice = parseFloat(plan.annualPrice) || (monthlyPrice * 12);
+    } else {
+      basePrice = monthlyPrice;
+    }
+
+    // Addon costs
+    const extraTollFreeNumbers = addons.find(a => a.type === 'extraTollFreeNumbers')?.quantity || 0;
+    const extraExtensions = addons.find(a => a.type === 'extraExtensions')?.quantity || 0;
+    
+    const tollFreeAddonCost = extraTollFreeNumbers * 199;
+    const extensionAddonCost = extraExtensions * 99;
+    const addonsCost = tollFreeAddonCost + extensionAddonCost;
+
+    // Toll-free number costs (included numbers are free, extra are charged)
+    const planLimits = plan.limits || {};
+    const maxTollFreeNumbers = planLimits.maxTollFreeNumbers || 0;
+    const includedNumbers = Math.min(selectedNumbers.length, maxTollFreeNumbers);
+    const extraNumbers = Math.max(0, selectedNumbers.length - maxTollFreeNumbers);
+    const tollFreeCost = extraNumbers * 199; // Extra numbers cost
+
+    const subtotal = basePrice + addonsCost + tollFreeCost;
+    const gstAmount = subtotal * 0.18;
+    const totalAmount = subtotal + gstAmount;
+
+    return {
+      plan: {
+        id: plan.id,
+        name: plan.planName,
+        type: plan.planType,
+      },
+      billingCycle,
+      pricing: {
+        basePrice: Number(basePrice.toFixed(2)),
+        addonsCost: Number(addonsCost.toFixed(2)),
+        tollFreeCost: Number(tollFreeCost.toFixed(2)),
+        subtotal: Number(subtotal.toFixed(2)),
+        gstAmount: Number(gstAmount.toFixed(2)),
+        totalAmount: Number(totalAmount.toFixed(2)),
+      },
+      currency: 'INR',
+      features: plan.features || {},
+      limits: plan.limits || {},
+    };
+  }
   async getUserActiveSubscription(userId) {
     const User = require('../models').User;
     
@@ -1048,6 +1335,457 @@ class SubscriptionService {
     });
 
     return subscription;
+  }
+
+  /**
+   * Get user's dashboard statistics
+   */
+  async getUserDashboardStats(userId) {
+    const User = require('../models').User;
+    const TollFreeNumber = require('../models').TollFreeNumber;
+    const Extension = require('../models').Extension;
+    const SubscriptionUsage = require('../models').SubscriptionUsage;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return {
+        subscription: null,
+        stats: {
+          tollFreeNumbers: 0,
+          extensions: 0,
+          minutesUsed: 0,
+          nextBilling: null,
+        }
+      };
+    }
+
+    // Get active subscription
+    const subscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      include: [
+        { model: RatePlan, as: 'plan' },
+        { model: Account, as: 'account' },
+        { model: Customer, as: 'customer' },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    // Get toll-free numbers count - only count numbers assigned to this customer's subscriptions
+    const customerSubscriptions = await Subscription.findAll({
+      where: { customerId: customer.id },
+      attributes: ['id'],
+    });
+    const subscriptionIds = customerSubscriptions.map(sub => sub.id);
+    
+    const tollFreeCount = await TollFreeNumber.count({
+      where: {
+        tenantId: customer.tenantId,
+        status: 'inactive',
+        config: {
+          subscriptionId: {
+            [Sequelize.Op.in]: subscriptionIds
+          }
+        }
+      }
+    });    // Get extensions count
+    const extensionsCount = await Extension.count({
+      where: {
+        tenantId: customer.tenantId,
+        isActive: true
+      },
+    });
+
+    // Get usage stats
+    let minutesUsed = 0;
+    if (subscription) {
+      const usage = await SubscriptionUsage.findOne({
+        where: {
+          subscriptionId: subscription.id,
+          billingPeriodStart: subscription.currentPeriodStart,
+          billingPeriodEnd: subscription.currentPeriodEnd,
+        },
+      });
+      if (usage) {
+        minutesUsed = usage.minutesUsed || 0;
+      }
+    }
+
+    return {
+      subscription,
+      stats: {
+        tollFreeNumbers: tollFreeCount,
+        extensions: extensionsCount,
+        minutesUsed,
+        nextBilling: subscription?.nextBillingDate || null,
+      }
+    };
+  }
+
+  /**
+   * Create subscription with payment (Razorpay)
+   */
+  async createSubscriptionWithPayment({
+    userId,
+    planId,
+    billingCycle,
+    addons,
+    customerData,
+    selectedNumbers,
+  }) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Get user and validate
+      const User = require('../models').User;
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      // Get or create customer
+      let customer = await Customer.findOne({
+        where: { userId },
+        transaction,
+      });
+
+      if (!customer) {
+        customer = await Customer.create({
+          userId,
+          tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea', // Default tenant
+          firstName: customerData.firstName,
+          lastName: customerData.lastName,
+          email: user.email,
+          phone: customerData.phone,
+          company: customerData.company,
+          address: customerData.address,
+          city: customerData.city,
+          state: customerData.state,
+          country: customerData.country,
+          postalCode: customerData.postalCode,
+          gstNumber: customerData.gstNumber,
+        }, { transaction });
+      }
+
+      // Get plan
+      const plan = await RatePlan.findByPk(planId);
+      if (!plan) {
+        throw new NotFoundError('Plan not found');
+      }
+
+      // Calculate pricing
+      const pricing = await pricingService.calculatePrice({
+        planId,
+        billingCycle,
+        addons: addons || [],
+        selectedNumbers: selectedNumbers || [],
+      });
+
+      // Create Razorpay order
+      const Razorpay = require('razorpay');
+      const razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      });
+
+      const orderOptions = {
+        amount: Math.round(pricing.totalAmount * 100), // Amount in paisa
+        currency: 'INR',
+        receipt: `sub_${Date.now()}`,
+        notes: {
+          userId,
+          customerId: customer.id,
+          planId,
+          billingCycle,
+          selectedNumbers: JSON.stringify(selectedNumbers || []),
+        },
+      };
+
+      const order = await razorpay.orders.create(orderOptions);
+
+      // Get or create account for customer
+      console.log(`[DEBUG] Looking for account for customer ${customer.id}`);
+      let account = await Account.findOne({
+        where: { customerId: customer.id },
+        transaction,
+      });
+      console.log(`[DEBUG] Account lookup result: ${account ? 'FOUND' : 'NOT FOUND'}`);
+
+      if (!account) {
+        console.log(`[DEBUG] Creating new account for customer ${customer.id}`);
+        account = await Account.create({
+          customerId: customer.id,
+          tenantId: customer.tenantId,
+          accountNumber: `ACC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+          accountType: 'postpaid',
+          balance: 0.0,
+          creditLimit: 0.0,
+          currency: 'INR',
+        }, { transaction });
+      } else {
+        console.log(`[DEBUG] Using existing account ${account.id}`);
+      }
+
+      // Create subscription record (pending payment)
+      const subscription = await Subscription.create({
+        customerId: customer.id,
+        tenantId: customer.tenantId,
+        accountId: account.id,
+        planId: planId,
+        subscriptionNumber: `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        billingCycle,
+        billingAmount: pricing.totalAmount,
+        currency: 'INR',
+        status: 'pending',
+        startDate: new Date(),
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: getBillingCycleDates(billingCycle).endDate,
+        metadata: {
+          selectedNumbers: selectedNumbers || [],
+          addons: addons || [],
+          pricing,
+          razorpayOrderId: order.id,
+        },
+      }, { transaction });
+
+      await transaction.commit();
+
+      return {
+        orderId: order.id,
+        subscriptionId: subscription.id,
+        amount: order.amount,
+        currency: order.currency,
+        key: process.env.RAZORPAY_KEY_ID,
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+        },
+      };
+    } catch (error) {
+      await transaction.rollback();
+      logger.error('Failed to create subscription with payment', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Verify payment and activate subscription
+   */
+  async verifyPaymentAndActivateSubscription({
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+  }) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Verify payment signature using crypto
+      const crypto = require('crypto');
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest('hex');
+
+      if (expectedSignature !== razorpay_signature) {
+        throw new ValidationError('Invalid payment signature');
+      }
+
+      // Find subscription by Razorpay order ID
+      const subscription = await Subscription.findOne({
+        where: {
+          'metadata.razorpayOrderId': razorpay_order_id,
+        },
+        include: [
+          { model: require('../models').RatePlan, as: 'plan' },
+          { model: require('../models').Customer, as: 'customer' },
+          { model: require('../models').Account, as: 'account' },
+        ],
+        transaction,
+      });
+
+      if (!subscription) {
+        throw new NotFoundError('Subscription not found for this order');
+      }
+
+      if (subscription.status !== 'pending') {
+        throw new ValidationError('Subscription is not in pending payment status');
+      }
+
+      // Update subscription status
+      subscription.status = 'active';
+      subscription.metadata = {
+        ...subscription.metadata,
+        paymentId: razorpay_payment_id,
+        paymentVerified: true,
+        activatedAt: new Date(),
+      };
+      await subscription.save({ transaction });
+
+      // Assign toll-free numbers to customer
+      const selectedNumbers = subscription.metadata.selectedNumbers || [];
+      const numbersArray = Array.isArray(selectedNumbers) ? selectedNumbers : [selectedNumbers];
+
+      // Get plan features to determine included toll-free numbers
+      const planFeatures = subscription.plan?.features || {};
+      const planLimits = subscription.plan?.limits || {};
+      const includedTollFreeNumbers = planFeatures.tollFreeNumbers || planLimits.maxTollFreeNumbers || 0;
+
+      // If no numbers were explicitly selected but plan includes numbers, auto-assign included numbers
+      let numbersToAssign = [...numbersArray];
+      if (numbersArray.length === 0 && includedTollFreeNumbers > 0) {
+        // Auto-assign included numbers from available pool
+        const TollFreeNumber = require('../models').TollFreeNumber;
+        const availableNumbers = await TollFreeNumber.findAll({
+          where: { status: 'active' },
+          limit: includedTollFreeNumbers,
+          order: [['number', 'ASC']],
+          transaction,
+        });
+
+        numbersToAssign = availableNumbers.map(num => ({
+          id: num.id,
+          number: num.number,
+          provider: 'balatrix',
+          setupCost: 0,
+          monthlyCost: planFeatures.perMinuteCharge || '99.99',
+          perMinuteCost: '0.0199'
+        }));
+
+        // Update subscription metadata with auto-assigned numbers
+        subscription.metadata = {
+          ...subscription.metadata,
+          selectedNumbers: numbersToAssign,
+          autoAssignedNumbers: true,
+        };
+        await subscription.save({ transaction });
+      }
+
+      // Ensure we assign at least the included numbers for the plan
+      if (numbersToAssign.length < includedTollFreeNumbers && includedTollFreeNumbers > 0) {
+        const additionalNeeded = includedTollFreeNumbers - numbersToAssign.length;
+
+        // Auto-assign additional numbers from available pool
+        const TollFreeNumber = require('../models').TollFreeNumber;
+        const alreadyAssignedIds = numbersToAssign.map(n => n.id);
+        const availableNumbers = await TollFreeNumber.findAll({
+          where: {
+            status: 'active',
+            id: { [require('sequelize').Op.notIn]: alreadyAssignedIds }
+          },
+          limit: additionalNeeded,
+          order: [['number', 'ASC']],
+          transaction,
+        });
+
+        const additionalNumbers = availableNumbers.map(num => ({
+          id: num.id,
+          number: num.number,
+          provider: 'balatrix',
+          setupCost: 0,
+          monthlyCost: planFeatures.perMinuteCharge || '99.99',
+          perMinuteCost: '0.0199'
+        }));
+
+        numbersToAssign = [...numbersToAssign, ...additionalNumbers];
+
+        // Update subscription metadata with auto-assigned numbers
+        subscription.metadata = {
+          ...subscription.metadata,
+          selectedNumbers: numbersToAssign,
+          autoAssignedNumbers: true,
+        };
+        await subscription.save({ transaction });
+      }
+
+      if (numbersToAssign.length > 0) {
+        const tollFreeNumberService = require('./tollFreeNumberService');
+        for (const numberData of numbersToAssign) {
+          if (numberData && numberData.id) {
+            await tollFreeNumberService.assignNumberToCustomer(
+              subscription.customerId,
+              numberData.id,
+              subscription.id,
+              transaction
+            );
+          }
+        }
+      }
+
+      // Auto-assign extensions based on plan
+      const includedExtensions = planFeatures.extensions || planLimits.maxExtensions || 0;
+      if (includedExtensions > 0) {
+        const extensionService = require('./extensionService');
+        const extensionResult = await extensionService.autoAssignExtensionsToCustomer(
+          subscription.customerId,
+          subscription.id,
+          transaction
+        );
+
+        // Update subscription metadata with auto-assigned extensions
+        subscription.metadata = {
+          ...subscription.metadata,
+          autoAssignedExtensions: true,
+          extensionBasePrefix: extensionResult.basePrefix,
+          assignedExtensionsCount: extensionResult.totalAssigned,
+          assignedExtensions: extensionResult.assignedExtensions,
+        };
+        await subscription.save({ transaction });
+
+        logger.info('Extensions auto-assigned during subscription activation', {
+          subscriptionId: subscription.id,
+          customerId: subscription.customerId,
+          basePrefix: extensionResult.basePrefix,
+          extensionsAssigned: extensionResult.totalAssigned,
+        });
+      }
+
+      // Create payment record
+      const Payment = require('../models').Payment;
+      await Payment.create({
+        customerId: subscription.customerId,
+        subscriptionId: subscription.id,
+        accountId: subscription.accountId,
+        paymentNumber: `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        amount: subscription.metadata.pricing.totalAmount,
+        currency: 'INR',
+        status: 'completed',
+        paymentMethod: 'razorpay',
+        gateway: 'razorpay',
+        gatewayPaymentId: razorpay_payment_id,
+        gatewayOrderId: razorpay_order_id,
+        gatewaySignature: razorpay_signature,
+        paymentType: 'subscription',
+        paidAt: new Date(),
+        billingPeriodStart: subscription.currentPeriodStart,
+        billingPeriodEnd: subscription.currentPeriodEnd,
+        metadata: {
+          razorpay_order_id,
+          razorpay_payment_id,
+          razorpay_signature,
+        },
+      }, { transaction });
+
+      await transaction.commit();
+
+      // Return updated subscription
+      return await this.getSubscriptionById(subscription.id);
+    } catch (error) {
+      await transaction.rollback();
+      logger.error('Failed to verify payment and activate subscription', { error: error.message });
+      throw error;
+    }
   }
 }
 

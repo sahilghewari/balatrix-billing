@@ -28,7 +28,27 @@ const PlanCard = ({ plan, billingCycle, onSelect, isPopular = false, disabled = 
     }
   }
 
-  // Parse features if it's a string
+  // Parse features from metadata if features/limits are not available
+  let parsedFeatures = {};
+  if (Array.isArray(metadata?.features)) {
+    metadata.features.forEach(feature => {
+      if (feature.includes('Toll-Free Number')) {
+        const match = feature.match(/(\d+)/);
+        if (match) parsedFeatures.tollFreeNumbers = parseInt(match[1]);
+      } else if (feature.includes('Free Calling Credit')) {
+        const match = feature.match(/₹(\d+)/);
+        if (match) parsedFeatures.freeCredit = parseInt(match[1]);
+      } else if (feature.includes('Extension')) {
+        const match = feature.match(/(\d+)/);
+        if (match) parsedFeatures.extensions = parseInt(match[1]);
+      } else if (feature.includes('/minute')) {
+        const match = feature.match(/₹(\d+\.?\d*)/);
+        if (match) parsedFeatures.perMinuteCharge = parseFloat(match[1]);
+      }
+    });
+  }
+
+  // Parse features if it's a string (handle both JSON string and object)
   let features = plan.features;
   if (typeof features === 'string') {
     try {
@@ -39,7 +59,21 @@ const PlanCard = ({ plan, billingCycle, onSelect, isPopular = false, disabled = 
     }
   }
 
-  // Parse limits if it's a string
+  // Set features based on plan name as fallback
+  if (plan.planName === 'Starter') {
+    features = { tollFreeNumbers: 1, freeCredit: 199, extensions: 1, perMinuteCharge: 1.99 };
+  } else if (plan.planName === 'Professional') {
+    features = { tollFreeNumbers: 2, freeCredit: 700, extensions: 2, perMinuteCharge: 1.60 };
+  } else if (plan.planName === 'Call Center') {
+    features = { tollFreeNumbers: 5, freeCredit: 3500, extensions: 10, perMinuteCharge: 1.45 };
+  }
+
+  // Use parsed features from metadata if available
+  if (Object.keys(parsedFeatures).length > 0) {
+    features = { ...features, ...parsedFeatures };
+  }
+
+  // Parse limits if it's a string (handle both JSON string and object)
   let limits = plan.limits;
   if (typeof limits === 'string') {
     try {
@@ -179,46 +213,36 @@ const PlanCard = ({ plan, billingCycle, onSelect, isPopular = false, disabled = 
             <p className="text-gray-500 text-sm italic">No features listed</p>
           )}
 
-          {/* Limits */}
-          {((limits && typeof limits === 'object') || (features && typeof features === 'object')) && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
+          {/* Plan Details */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
               <h4 className="text-sm font-semibold text-gray-900 mb-3">Plan Details</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                {(limits?.maxTollFreeNumbers !== undefined || features?.tollFreeNumbers !== undefined) && (
-                  <li className="flex justify-between">
-                    <span>Toll-Free Numbers:</span>
-                    <span className="font-semibold text-gray-900">
-                      {limits?.maxTollFreeNumbers || features?.tollFreeNumbers}
-                    </span>
-                  </li>
-                )}
-                {(limits?.monthlyMinuteAllowance !== undefined || features?.freeMinutes !== undefined) && (
-                  <li className="flex justify-between">
-                    <span>Included Minutes:</span>
-                    <span className="font-semibold text-gray-900">
-                      {limits?.monthlyMinuteAllowance || features?.freeMinutes}
-                    </span>
-                  </li>
-                )}
-                {(limits?.maxExtensions !== undefined || features?.extensions !== undefined) && (
-                  <li className="flex justify-between">
-                    <span>Extensions:</span>
-                    <span className="font-semibold text-gray-900">
-                      {limits?.maxExtensions || features?.extensions}
-                    </span>
-                  </li>
-                )}
-                {features?.perMinuteCharge !== undefined && (
-                  <li className="flex justify-between">
-                    <span>Per Minute Rate:</span>
-                    <span className="font-semibold text-gray-900">
-                      ₹{features.perMinuteCharge}
-                    </span>
-                  </li>
-                )}
+                <li className="flex justify-between">
+                  <span>Toll-Free Numbers:</span>
+                  <span className="font-semibold text-gray-900">
+                    {limits?.maxTollFreeNumbers || features?.tollFreeNumbers || 'N/A'}
+                  </span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Included Credit:</span>
+                  <span className="font-semibold text-gray-900">
+                    ₹{(limits?.monthlyCreditAllowance || features?.freeCredit || 0).toLocaleString('en-IN')}
+                  </span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Extensions:</span>
+                  <span className="font-semibold text-gray-900">
+                    {limits?.maxExtensions || features?.extensions || 'N/A'}
+                  </span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Per Minute Rate:</span>
+                  <span className="font-semibold text-gray-900">
+                    ₹{features?.perMinuteCharge || 'N/A'}
+                  </span>
+                </li>
               </ul>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Select Button */}

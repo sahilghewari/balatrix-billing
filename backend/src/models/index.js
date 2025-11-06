@@ -34,6 +34,10 @@ const RoutingRule = require('./RoutingRule');
 User.hasOne(Customer, { foreignKey: 'userId', as: 'customer' });
 Customer.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// Customer <-> Tenant (Many-to-One)
+Customer.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
+Tenant.hasMany(Customer, { foreignKey: 'tenantId', as: 'customers' });
+
 // Customer <-> Account (One-to-Many)
 Customer.hasMany(Account, { foreignKey: 'customerId', as: 'accounts' });
 Account.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
@@ -146,10 +150,6 @@ TollFreeNumber.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
 // Tenant <-> RoutingRule (One-to-Many)
 Tenant.hasMany(RoutingRule, { foreignKey: 'tenantId', as: 'routingRules' });
 RoutingRule.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
-
-// TollFreeNumber <-> RoutingRule (One-to-Many)
-TollFreeNumber.hasMany(RoutingRule, { foreignKey: 'tollFreeNumberId', as: 'routingRules' });
-RoutingRule.belongsTo(TollFreeNumber, { foreignKey: 'tollFreeNumberId', as: 'tollFreeNumber' });
 
 // Note: Extension model uses kamailioSequelize, so associations with main db models need careful handling
 // Extension belongs to Tenant (cross-database reference)

@@ -19,11 +19,14 @@ import {
 } from './pages';
 import PlansPage from './pages/PlansPage';
 import CheckoutPage from './pages/CheckoutPage';
+import TollFreeNumberSelectionPage from './pages/TollFreeNumberSelectionPage';
+import TollFreeNumberManagementPage from './pages/TollFreeNumberManagementPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import TenantsPage from './pages/TenantsPage';
 import ExtensionsPage from './pages/ExtensionsPage';
 import TenantForm from './pages/TenantForm';
 import ExtensionForm from './pages/ExtensionForm';
+import ExtensionManagementPage from './pages/ExtensionManagementPage';
 import './App.css';
 
 function App() {
@@ -59,7 +62,7 @@ function App() {
         {/* Routes */}
         <Routes>
           {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/plans" replace />} />
 
           {/* Public Routes */}
           <Route
@@ -107,6 +110,36 @@ function App() {
 
           {/* Plans Page - Public (browsing), Private (selecting) */}
           <Route path="/plans" element={<PlansPage />} />
+          
+          {/* Toll-Free Number Selection - Private */}
+          <Route
+            path="/select-number"
+            element={
+              <PrivateRoute>
+                <TollFreeNumberSelectionPage />
+              </PrivateRoute>
+            }
+          />
+          
+          {/* Toll-Free Number Management - Private */}
+          <Route
+            path="/numbers/manage"
+            element={
+              <PrivateRoute>
+                <TollFreeNumberManagementPage />
+              </PrivateRoute>
+            }
+          />
+          
+          {/* Extension Management - Private */}
+          <Route
+            path="/extensions/manage"
+            element={
+              <PrivateRoute>
+                <ExtensionManagementPage />
+              </PrivateRoute>
+            }
+          />
           
           {/* Checkout Page - Private */}
           <Route

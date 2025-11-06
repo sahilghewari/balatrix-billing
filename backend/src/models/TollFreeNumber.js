@@ -1,6 +1,6 @@
-/**
+﻿/**
  * TollFreeNumber Model
- * Toll-free numbers assigned to tenants
+ * Simplified toll-free number management for tenants
  */
 
 const { DataTypes } = require('sequelize');
@@ -17,7 +17,7 @@ const TollFreeNumber = sequelize.define(
     },
     tenantId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true, // null = available, assigned = tenant owns it
       references: {
         model: 'Tenants',
         key: 'id',
@@ -27,11 +27,6 @@ const TollFreeNumber = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: false,
       unique: true,
-    },
-    provider: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      defaultValue: 'balatrix',
     },
     status: {
       type: DataTypes.ENUM('active', 'inactive', 'suspended'),
@@ -48,21 +43,18 @@ const TollFreeNumber = sequelize.define(
       allowNull: false,
       defaultValue: 0.0000,
     },
+    assignedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     config: {
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: {},
     },
-    assignedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    activatedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
   },
   {
+    tableName: 'TollFreeNumbers', // Match the migration table name
     indexes: [
       {
         unique: true,
@@ -74,17 +66,22 @@ const TollFreeNumber = sequelize.define(
       {
         fields: ['status'],
       },
-      {
-        fields: ['provider'],
-      },
     ],
   }
 );
 
 // Instance methods
-TollFreeNumber.prototype.activate = function () {
+TollFreeNumber.prototype.assignToTenant = function (tenantId) {
+  this.tenantId = tenantId;
+  this.status = 'inactive'; // Set status to inactive (assigned)
+  this.assignedAt = new Date();
+  return this.save();
+};
+
+TollFreeNumber.prototype.unassign = function () {
+  this.tenantId = null;
   this.status = 'active';
-  this.activatedAt = new Date();
+  this.assignedAt = null;
   return this.save();
 };
 
@@ -93,19 +90,20 @@ TollFreeNumber.prototype.suspend = function () {
   return this.save();
 };
 
-TollFreeNumber.prototype.getFormattedNumber = function () {
-  // Format as (XXX) XXX-XXXX for US numbers
-  const cleaned = this.number.replace(/\D/g, '');
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-  }
-  return this.number;
+// Class methods
+TollFreeNumber.getAvailable = function (limit = 20, offset = 0) {
+  return this.findAll({
+    where: { status: 'active' },
+    limit,
+    offset,
+    order: [['number', 'ASC']],
+  });
 };
 
-// Class methods
-TollFreeNumber.findActiveByTenant = function (tenantId) {
+TollFreeNumber.getByTenant = function (tenantId) {
   return this.findAll({
-    where: { tenantId, status: 'active' },
+    where: { tenantId, status: 'inactive' },
+    order: [['number', 'ASC']],
   });
 };
 

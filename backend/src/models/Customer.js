@@ -24,6 +24,15 @@ const Customer = sequelize.define(
       },
       onDelete: 'CASCADE',
     },
+    tenantId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'Tenants',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
     companyName: {
       type: DataTypes.STRING(255),
       allowNull: true,

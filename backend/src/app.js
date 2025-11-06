@@ -42,6 +42,7 @@ const invoiceRoutes = require('./routes/invoices');
 const monitoringRoutes = require('./routes/monitoring');
 const tenantRoutes = require('./routes/tenants');
 const extensionRoutes = require('./routes/extensions');
+const tollFreeNumberRoutes = require('./routes/tollFreeNumbers');
 
 // Initialize Express app
 const app = express();
@@ -114,8 +115,12 @@ app.get('/health', async (req, res) => {
     // Check database connection
     await sequelize.authenticate();
 
-    // Check Redis connection
-    await redisClient.ping();
+    // Check Redis connection (only if enabled)
+    let redisStatus = 'disabled';
+    if (redisClient) {
+      await redisClient.ping();
+      redisStatus = 'connected';
+    }
 
     res.status(200).json({
       success: true,
@@ -125,7 +130,7 @@ app.get('/health', async (req, res) => {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         database: 'connected',
-        redis: 'connected',
+        redis: redisStatus,
         environment: process.env.NODE_ENV || 'development',
       },
     });
@@ -160,9 +165,7 @@ app.use('/api/cdrs', cdrRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/extensions', extensionRoutes);
-// TODO: Add more routes
-// app.use('/api/reports', reportRoutes);
-// app.use('/api/dids', didRoutes);
+app.use('/api/toll-free-numbers', tollFreeNumberRoutes);
 
 /**
  * Welcome route
@@ -184,6 +187,7 @@ app.get('/', (req, res) => {
       invoices: '/api/invoices',
       tenants: '/api/tenants',
       extensions: '/api/extensions',
+      'toll-free-numbers': '/api/toll-free-numbers',
     },
   });
 });

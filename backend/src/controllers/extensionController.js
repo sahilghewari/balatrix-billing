@@ -478,6 +478,319 @@ const syncTenantExtensions = async (req, res) => {
   }
 };
 
+/**
+ * Get current user's extensions
+ * GET /api/extensions/my-extensions
+ */
+const getMyExtensions = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Get user's customer record
+    const { Customer, Subscription } = require('../models');
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return successResponse(res, [], 'No customer record found');
+    }
+
+    // Get customer's active subscription
+    const activeSubscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      order: [['createdAt', 'DESC']], // Get the most recent active subscription
+    });
+
+    if (!activeSubscription) {
+      return successResponse(res, [], 'No active subscription found');
+    }
+
+    // Get extensions using the extension service, filtered by subscription
+    const extensionService = require('../services/extensionService');
+    const extensions = await extensionService.getCustomerExtensions(customer.id, activeSubscription.id);
+
+    return successResponse(res, extensions, 'Your extensions retrieved successfully');
+  } catch (error) {
+    logger.error('Error getting user extensions:', error);
+    return errorResponse(res, 'Failed to retrieve extensions', 500);
+  }
+};
+
+/**
+ * Reset password for customer's own extension
+ * POST /api/extensions/my-extensions/:id/reset-password
+ */
+const resetMyExtensionPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    const userId = req.userId;
+
+    // Get user's customer record and active subscription
+    const { Customer, Subscription } = require('../models');
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return errorResponse(res, 'Customer not found', 404);
+    }
+
+    const activeSubscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (!activeSubscription) {
+      return errorResponse(res, 'No active subscription found', 404);
+    }
+
+    // Verify extension belongs to customer's active subscription
+    const extension = await Extension.findOne({
+      where: {
+        id,
+        config: {
+          subscriptionId: activeSubscription.id,
+        },
+      },
+    });
+
+    if (!extension) {
+      return errorResponse(res, 'Extension not found or does not belong to your subscription', 404);
+    }
+
+    // Use provided password or generate new one
+    let passwordToSet = newPassword;
+    if (!passwordToSet) {
+      const crypto = require('crypto');
+      passwordToSet = crypto.randomBytes(8).toString('hex');
+    }
+
+    // Validate password length if provided
+    if (newPassword && newPassword.length < 6) {
+      return validationErrorResponse(res, 'Password must be at least 6 characters long');
+    }
+
+    // Update password
+    await extension.update({ password: passwordToSet });
+
+    // Sync to Kamailio
+    try {
+      await kamailioService.syncExtensionToKamailio(extension);
+      logger.info(`Extension ${extension.extension} password reset synced to Kamailio`);
+    } catch (syncError) {
+      logger.error(`Failed to sync password reset for extension ${extension.extension} to Kamailio:`, syncError);
+    }
+
+    successResponse(res, {
+      extension: extension.extension,
+      newPassword: passwordToSet,
+    }, 'Extension password reset successfully');
+  } catch (error) {
+    logger.error('Error resetting customer extension password:', error);
+    errorResponse(res, 'Failed to reset extension password');
+  }
+};
+
+/**
+ * Sync customer's own extension
+ * POST /api/extensions/my-extensions/:id/sync
+ */
+const syncMyExtension = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    // Get user's customer record and active subscription
+    const { Customer, Subscription } = require('../models');
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return errorResponse(res, 'Customer not found', 404);
+    }
+
+    const activeSubscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (!activeSubscription) {
+      return errorResponse(res, 'No active subscription found', 404);
+    }
+
+    // Verify extension belongs to customer's active subscription
+    const extension = await Extension.findOne({
+      where: {
+        id,
+        config: {
+          subscriptionId: activeSubscription.id,
+        },
+      },
+    });
+
+    if (!extension) {
+      return errorResponse(res, 'Extension not found or does not belong to your subscription', 404);
+    }
+
+    // Try Kamailio first, then FreeSWITCH as fallback
+    let result;
+    try {
+      result = await kamailioService.syncExtensionToKamailio(extension);
+    } catch (kamailioError) {
+      logger.warn(`Kamailio sync failed for extension ${extension.extension}, trying FreeSWITCH:`, kamailioError.message);
+      try {
+        result = await freeswitchService.syncExtensionToFreeSWITCH(extension);
+      } catch (freeswitchError) {
+        logger.error(`Both Kamailio and FreeSWITCH sync failed for extension ${extension.extension}:`, freeswitchError.message);
+        return errorResponse(res, 'Failed to sync extension to both Kamailio and FreeSWITCH');
+      }
+    }
+
+    successResponse(res, result, 'Extension synced successfully');
+  } catch (error) {
+    logger.error('Error syncing customer extension:', error);
+    errorResponse(res, 'Failed to sync extension');
+  }
+};
+
+/**
+ * Get current password for customer's own extension
+ * GET /api/extensions/my-extensions/:id/password
+ */
+const getMyExtensionPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    // Get user's customer record and active subscription
+    const { Customer, Subscription } = require('../models');
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return errorResponse(res, 'Customer not found', 404);
+    }
+
+    const activeSubscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (!activeSubscription) {
+      return errorResponse(res, 'No active subscription found', 404);
+    }
+
+    // Verify extension belongs to customer's active subscription
+    const extension = await Extension.findOne({
+      where: {
+        id,
+        config: {
+          subscriptionId: activeSubscription.id,
+        },
+      },
+    });
+
+    if (!extension) {
+      return errorResponse(res, 'Extension not found or does not belong to your subscription', 404);
+    }
+
+    successResponse(res, {
+      extension: extension.extension,
+      password: extension.password,
+    }, 'Extension password retrieved successfully');
+  } catch (error) {
+    logger.error('Error getting customer extension password:', error);
+    errorResponse(res, 'Failed to retrieve extension password');
+  }
+};
+
+/**
+ * Update password for customer's own extension
+ * PUT /api/extensions/my-extensions/:id/password
+ */
+const updateMyExtensionPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    const userId = req.userId;
+
+    if (!newPassword || newPassword.length < 6) {
+      return validationErrorResponse(res, 'Password must be at least 6 characters long');
+    }
+
+    // Get user's customer record and active subscription
+    const { Customer, Subscription } = require('../models');
+    const customer = await Customer.findOne({
+      where: { userId },
+    });
+
+    if (!customer) {
+      return errorResponse(res, 'Customer not found', 404);
+    }
+
+    const activeSubscription = await Subscription.findOne({
+      where: {
+        customerId: customer.id,
+        status: 'active',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (!activeSubscription) {
+      return errorResponse(res, 'No active subscription found', 404);
+    }
+
+    // Verify extension belongs to customer's active subscription
+    const extension = await Extension.findOne({
+      where: {
+        id,
+        config: {
+          subscriptionId: activeSubscription.id,
+        },
+      },
+    });
+
+    if (!extension) {
+      return errorResponse(res, 'Extension not found or does not belong to your subscription', 404);
+    }
+
+    // Update password
+    await extension.update({ password: newPassword });
+
+    // Sync to Kamailio
+    try {
+      await kamailioService.syncExtensionToKamailio(extension);
+      logger.info(`Extension ${extension.extension} password update synced to Kamailio`);
+    } catch (syncError) {
+      logger.error(`Failed to sync password update for extension ${extension.extension} to Kamailio:`, syncError);
+    }
+
+    successResponse(res, {
+      extension: extension.extension,
+      message: 'Password updated successfully',
+    }, 'Extension password updated successfully');
+  } catch (error) {
+    logger.error('Error updating customer extension password:', error);
+    errorResponse(res, 'Failed to update extension password');
+  }
+};
+
 module.exports = {
   getExtensions,
   getAllExtensions,
@@ -490,4 +803,9 @@ module.exports = {
   resetExtensionPassword,
   syncExtension,
   syncTenantExtensions,
+  getMyExtensions,
+  resetMyExtensionPassword,
+  syncMyExtension,
+  getMyExtensionPassword,
+  updateMyExtensionPassword,
 };

@@ -26,10 +26,11 @@ router.get(
   extensionController.getExtensions
 );
 
+// Get current user's extensions
+router.get('/my-extensions', extensionController.getMyExtensions);
+
 // Get extension by ID
 router.get('/:id', extensionController.getExtension);
-
-// Create new extension (admin/support only)
 router.post(
   '/',
   requireRole('admin', 'support'),
@@ -85,5 +86,14 @@ router.post(
   requireRole('admin', 'support'),
   extensionController.syncExtension
 );
+
+// Get current user's extensions
+router.get('/my-extensions', extensionController.getMyExtensions);
+
+// Customer-specific extension management (no admin role required)
+router.post('/my-extensions/:id/reset-password', extensionController.resetMyExtensionPassword);
+router.post('/my-extensions/:id/sync', extensionController.syncMyExtension);
+router.get('/my-extensions/:id/password', extensionController.getMyExtensionPassword);
+router.put('/my-extensions/:id/password', extensionController.updateMyExtensionPassword);
 
 module.exports = router;

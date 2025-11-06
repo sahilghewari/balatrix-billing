@@ -405,6 +405,89 @@ class PricingService {
       currency: 'INR',
     }));
   }
+
+  /**
+   * Calculate total price for subscription with plan, addons, and toll-free numbers
+   */
+  async calculatePrice({ planId, billingCycle, addons = [], selectedNumbers = [] }) {
+    console.log('Pricing service received:', { planId, billingCycle, addons, selectedNumbers });
+    const { RatePlan } = require('../models');
+
+    // Get plan
+    const plan = await RatePlan.findByPk(planId);
+    if (!plan) {
+      throw new NotFoundError('Plan not found');
+    }
+
+    // Base price - ensure it's a number
+    let basePrice = billingCycle === 'annual' ? plan.annualPrice || (plan.monthlyPrice * 12) : plan.monthlyPrice;
+    
+    if (typeof basePrice === 'string') {
+      basePrice = parseFloat(basePrice);
+    }
+    if (!basePrice || isNaN(basePrice)) {
+      basePrice = 0;
+    }
+
+    // Addon costs
+    let addonsCost = 0;
+    if (Array.isArray(addons)) {
+      for (const addon of addons) {
+        if (addon.code === 'extraTollFreeNumbers') {
+          addonsCost += addon.quantity * (ADDON_PRICING.tollFreeNumber?.payAsYouGo || 0);
+        } else if (addon.code === 'extraExtensions') {
+          addonsCost += addon.quantity * (ADDON_PRICING.extension?.payAsYouGo || 0);
+        }
+      }
+    } else if (addons && typeof addons === 'object') {
+      // Handle object format { extraTollFreeNumbers: 0, extraExtensions: 0 }
+      if (addons.extraTollFreeNumbers) {
+        addonsCost += addons.extraTollFreeNumbers * (ADDON_PRICING.tollFreeNumber?.payAsYouGo || 0);
+      }
+      if (addons.extraExtensions) {
+        addonsCost += addons.extraExtensions * (ADDON_PRICING.extension?.payAsYouGo || 0);
+      }
+    }
+
+    // Toll-free number costs
+    let tollFreeCost = 0;
+    if (Array.isArray(selectedNumbers)) {
+      for (const number of selectedNumbers) {
+        if (number && number.monthlyCost) {
+          const cost = typeof number.monthlyCost === 'string' ? 
+            parseFloat(number.monthlyCost) : number.monthlyCost;
+          tollFreeCost += cost || 0;
+        }
+      }
+    } else if (selectedNumbers && typeof selectedNumbers === 'object') {
+      // Handle single object format
+      if (selectedNumbers.monthlyCost) {
+        const cost = typeof selectedNumbers.monthlyCost === 'string' ? 
+          parseFloat(selectedNumbers.monthlyCost) : selectedNumbers.monthlyCost;
+        tollFreeCost += cost || 0;
+      }
+    }
+
+    // Subtotal
+    const subtotal = basePrice + addonsCost + tollFreeCost;
+
+    // GST calculation (18%)
+    const gstAmount = subtotal * TAX_RATES.GST;
+
+    // Total
+    const totalAmount = subtotal + gstAmount;
+
+    return {
+      basePrice: parseFloat(basePrice.toFixed(2)),
+      addonsCost: parseFloat(addonsCost.toFixed(2)),
+      tollFreeCost: parseFloat(tollFreeCost.toFixed(2)),
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      gstAmount: parseFloat(gstAmount.toFixed(2)),
+      totalAmount: parseFloat(totalAmount.toFixed(2)),
+      currency: 'INR',
+      billingCycle,
+    };
+  }
 }
 
 module.exports = new PricingService();

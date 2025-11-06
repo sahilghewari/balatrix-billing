@@ -347,12 +347,27 @@ const sanitizeFilename = (filename) => {
 
 /**
  * Get date range for billing cycle
- * @param {Date} date - Reference date
+ * @param {string} billingCycle - Billing cycle type ('monthly', 'quarterly', 'annual')
+ * @param {Date} startDate - Reference start date (defaults to now)
  * @returns {Object} Start and end dates
  */
-const getBillingCycleDates = (date = new Date()) => {
-  const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
-  const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+const getBillingCycleDates = (billingCycle = 'monthly', startDate = new Date()) => {
+  let endDate;
+
+  switch (billingCycle) {
+    case 'monthly':
+      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
+      break;
+    case 'quarterly':
+      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 3, 0, 23, 59, 59, 999);
+      break;
+    case 'annual':
+      endDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), 0, 23, 59, 59, 999);
+      break;
+    default:
+      // Default to monthly
+      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
 
   return { startDate, endDate };
 };

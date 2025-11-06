@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../hooks';
 import { loginSchema } from '../../schemas';
 import { Button, Input, Card, Alert } from '../common';
+import { getMySubscription } from '../../api/subscriptionService';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -31,7 +32,19 @@ const LoginForm = () => {
     try {
       setError('');
       await login(data.email, data.password);
-      navigate('/dashboard');
+      
+      // Check if user has an active subscription
+      try {
+        const subscription = await getMySubscription();
+        if (subscription) {
+          navigate('/dashboard');
+        } else {
+          navigate('/plans');
+        }
+      } catch (subscriptionError) {
+        // If subscription check fails, assume no subscription and redirect to plans
+        navigate('/plans');
+      }
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     }

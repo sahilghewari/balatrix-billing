@@ -71,6 +71,11 @@ const ADDON_PRICING = {
   perMinuteOverage: 1.99, // Default overage rate
 };
 
+// Tax Rates
+const TAX_RATES = {
+  GST: 0.18, // 18% GST for India
+};
+
 // Billing Cycles
 const BILLING_CYCLES = {
   MONTHLY: 'monthly',
@@ -354,6 +359,7 @@ module.exports = {
   DID_STATUS,
   NOTIFICATION_TYPES,
   SECURITY,
+  TAX_RATES,
   TAX_CONFIG,
   CURRENCY,
   QUEUE_NAMES,

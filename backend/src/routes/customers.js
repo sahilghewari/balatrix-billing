@@ -114,4 +114,33 @@ router.post(
   customerController.createAccount
 );
 
+/**
+ * Toll-Free Number routes for customers
+ */
+const tollFreeNumberController = require('../controllers/tollFreeNumberController');
+
+// Assign toll-free number to customer
+router.post(
+  '/:customerId/toll-free-numbers',
+  authenticate,
+  requireCustomerAccess,
+  tollFreeNumberController.assignNumberToCustomer
+);
+
+// Get customer's assigned toll-free numbers
+router.get(
+  '/:customerId/toll-free-numbers',
+  authenticate,
+  requireCustomerAccess,
+  tollFreeNumberController.getCustomerNumbers
+);
+
+// Unassign toll-free number from customer
+router.delete(
+  '/:customerId/toll-free-numbers/:numberId',
+  authenticate,
+  requireCustomerAccess,
+  tollFreeNumberController.unassignNumber
+);
+
 module.exports = router;

@@ -18,7 +18,7 @@ const CheckoutPage = () => {
   const location = useLocation();
   const { user } = useAuth();
 
-  const { plan, billingCycle, addons, pricing } = location.state || {};
+  const { plan, billingCycle, addons, pricing, selectedNumbers } = location.state || {};
 
   const [customerData, setCustomerData] = useState({
     firstName: '',
@@ -119,6 +119,14 @@ const CheckoutPage = () => {
         billingCycle,
         addons,
         customerData,
+        selectedNumbers: selectedNumbers ? selectedNumbers.map(number => ({
+          id: number.id,
+          number: number.number,
+          provider: 'balatrix', // Default provider
+          setupCost: 0, // No setup cost in new API
+          monthlyCost: number.monthlyCost,
+          perMinuteCost: number.perMinuteCost,
+        })) : [],
       });
 
       const { orderId, subscriptionId, amount, currency, key, customer } = response;
@@ -131,7 +139,6 @@ const CheckoutPage = () => {
         order_id: orderId,
         name: 'Balatrix Telecom',
         description: `${plan.planName} - ${billingCycle} subscription`,
-        image: '/logo.png',
         prefill: {
           name: customer.name,
           email: customer.email,
@@ -162,7 +169,9 @@ const CheckoutPage = () => {
       razorpay.open();
     } catch (error) {
       console.error('Error creating order:', error);
-      toast.error(error.response?.data?.message || 'Failed to create order');
+      console.error('Error response:', error.response);
+      console.error('Error message:', error.message);
+      toast.error(error.response?.data?.message || error.message || 'Failed to create order');
       setProcessing(false);
     }
   };
@@ -189,9 +198,53 @@ const CheckoutPage = () => {
     }
   };
 
-  if (!plan || !pricing) {
-    return null;
-  }
+  // Parse plan features for display
+  const getPlanFeatures = () => {
+    // Parse metadata if it's a string
+    let metadata = plan.metadata;
+    if (typeof metadata === 'string') {
+      try {
+        metadata = JSON.parse(metadata);
+      } catch (e) {
+        metadata = {};
+      }
+    }
+
+    // Parse features from metadata
+    let features = {};
+    if (Array.isArray(metadata?.features)) {
+      metadata.features.forEach(feature => {
+        if (feature.includes('Toll-Free Number')) {
+          const match = feature.match(/(\d+)/);
+          if (match) features.tollFreeNumbers = parseInt(match[1]);
+        } else if (feature.includes('Free Calling Credit')) {
+          const match = feature.match(/₹(\d+)/);
+          if (match) features.freeCredit = parseInt(match[1]);
+        } else if (feature.includes('Extension')) {
+          const match = feature.match(/(\d+)/);
+          if (match) features.extensions = parseInt(match[1]);
+        } else if (feature.includes('/minute') || feature.includes('/min')) {
+          const match = feature.match(/₹(\d+\.?\d*)/);
+          if (match) features.perMinuteCharge = parseFloat(match[1]);
+        }
+      });
+    }
+
+    // Fallback based on plan name
+    if (Object.keys(features).length === 0) {
+      if (plan.planName === 'Starter') {
+        features = { tollFreeNumbers: 1, freeCredit: 199, extensions: 1, perMinuteCharge: 1.99 };
+      } else if (plan.planName === 'Professional') {
+        features = { tollFreeNumbers: 2, freeCredit: 700, extensions: 2, perMinuteCharge: 1.60 };
+      } else if (plan.planName === 'Call Center') {
+        features = { tollFreeNumbers: 5, freeCredit: 3500, extensions: 10, perMinuteCharge: 1.45 };
+      }
+    }
+
+    return features;
+  };
+
+  const planFeatures = getPlanFeatures();
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -315,25 +368,61 @@ const CheckoutPage = () => {
                   </p>
                 </div>
 
+                {/* Selected Toll-Free Numbers */}
+                {selectedNumbers && selectedNumbers.length > 0 && (
+                  <div className="pb-4 border-b border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">
+                      Selected Numbers ({selectedNumbers.length}):
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedNumbers.map((number, index) => (
+                        <div key={number.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-lg font-semibold text-green-600">
+                              {number.number}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              ({number.provider})
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            ₹{number.monthlyCost}/month
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-200 text-sm text-gray-600">
+                      <div className="flex justify-between">
+                        <span>Total Setup Cost:</span>
+                        <span>₹{selectedNumbers.reduce((sum, num) => sum + (num.setupCost || 0), 0)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Monthly Cost:</span>
+                        <span>₹{selectedNumbers.reduce((sum, num) => sum + num.monthlyCost, 0)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Plan Limits */}
                 <div className="pb-4 border-b border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-3">Included:</h4>
                   <ul className="space-y-2 text-sm text-gray-700">
                     <li className="flex items-center">
                       <Check className="w-4 h-4 text-green-500 mr-2" />
-                      {pricing.limits?.tollFreeNumbers} Toll-Free Number(s)
+                      {planFeatures.tollFreeNumbers || 0} Toll-Free Number{planFeatures.tollFreeNumbers !== 1 ? 's' : ''}
                     </li>
                     <li className="flex items-center">
                       <Check className="w-4 h-4 text-green-500 mr-2" />
-                      {pricing.limits?.includedMinutes} Minutes
+                      ₹{planFeatures.freeCredit || 0} Free Calling Credit
                     </li>
                     <li className="flex items-center">
                       <Check className="w-4 h-4 text-green-500 mr-2" />
-                      {pricing.limits?.extensions} Extension(s)
+                      {planFeatures.extensions || 0} Extension{planFeatures.extensions !== 1 ? 's' : ''}
                     </li>
                     <li className="flex items-center">
                       <Check className="w-4 h-4 text-green-500 mr-2" />
-                      ₹{pricing.limits?.pricePerMinute}/min after included minutes
+                      ₹{planFeatures.perMinuteCharge || 0}/min after free credit
                     </li>
                   </ul>
                 </div>

@@ -25,6 +25,15 @@ const Account = sequelize.define(
       },
       onDelete: 'CASCADE',
     },
+    tenantId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'Tenants',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
     accountNumber: {
       type: DataTypes.STRING(50),
       allowNull: false,
