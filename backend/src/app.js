@@ -43,6 +43,7 @@ const monitoringRoutes = require('./routes/monitoring');
 const tenantRoutes = require('./routes/tenants');
 const extensionRoutes = require('./routes/extensions');
 const tollFreeNumberRoutes = require('./routes/tollFreeNumbers');
+const routingRoutes = require('./routes/routing');
 
 // Initialize Express app
 const app = express();
@@ -166,6 +167,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/extensions', extensionRoutes);
 app.use('/api/toll-free-numbers', tollFreeNumberRoutes);
+app.use('/api/routing', routingRoutes);
 
 /**
  * Welcome route

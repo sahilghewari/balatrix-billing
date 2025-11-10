@@ -27,6 +27,7 @@ import ExtensionsPage from './pages/ExtensionsPage';
 import TenantForm from './pages/TenantForm';
 import ExtensionForm from './pages/ExtensionForm';
 import ExtensionManagementPage from './pages/ExtensionManagementPage';
+import RoutingPage from './pages/RoutingPage';
 import './App.css';
 
 function App() {
@@ -71,6 +72,16 @@ function App() {
               <PublicRoute>
                 <LoginPage />
               </PublicRoute>
+            }
+          />
+
+          {/* Call Routing - Private */}
+          <Route
+            path="/routing"
+            element={
+              <PrivateRoute>
+                <RoutingPage />
+              </PrivateRoute>
             }
           />
           <Route

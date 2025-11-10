@@ -9,6 +9,7 @@ export * as subscriptionService from './subscriptionService';
 export { default as tenantService } from './tenantService';
 export { default as extensionService } from './extensionService';
 export { default as tollFreeNumberService } from './tollFreeNumberService';
+export { default as routingService } from './routingService';
 export { default as usageService } from './usageService';
 
 // Future service exports will go here

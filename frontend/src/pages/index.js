@@ -17,3 +17,4 @@ export { default as CheckoutPage } from './CheckoutPage';
 export { default as TollFreeNumberSelectionPage } from './TollFreeNumberSelectionPage';
 export { default as TollFreeNumberManagementPage } from './TollFreeNumberManagementPage';
 export { default as ExtensionManagementPage } from './ExtensionManagementPage';
+export { default as RoutingPage } from './RoutingPage';
