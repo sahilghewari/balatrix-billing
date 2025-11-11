@@ -3,13 +3,14 @@
  * Redis connection for caching and session management
  */
 
-const Redis = require('ioredis');
-const logger = require('../utils/logger');
+// const Redis = require('ioredis');
+// const logger = require('../utils/logger');
 
 // Check if Redis should be enabled
-const REDIS_ENABLED = process.env.ENABLE_REDIS !== 'false';
+// const REDIS_ENABLED = process.env.ENABLE_REDIS !== 'false';
 
 // Redis client configuration
+/*
 const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT, 10) || 6379,
@@ -24,6 +25,7 @@ const redisConfig = {
   enableOfflineQueue: true,
   lazyConnect: false,
 };
+*/
 
 // Create Redis client conditionally
 let redisClient = null;

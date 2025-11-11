@@ -3,14 +3,15 @@
  * Background job processing with Redis
  */
 
-const Queue = require('bull');
-const logger = require('../utils/logger');
-const { QUEUE_NAMES } = require('../utils/constants');
+// const Queue = require('bull');
+// const logger = require('../utils/logger');
+// const { QUEUE_NAMES } = require('../utils/constants');
 
 // Check if queues should be enabled
-const QUEUES_ENABLED = process.env.ENABLE_QUEUES !== 'false';
+// const QUEUES_ENABLED = process.env.ENABLE_QUEUES !== 'false';
 
 // Queue configuration
+/*
 const queueConfig = {
   redis: {
     host: process.env.BULL_QUEUE_REDIS_HOST || process.env.REDIS_HOST || 'localhost',
@@ -31,10 +32,12 @@ const queueConfig = {
     duration: 1000,
   },
 };
+*/
 
 // Create queues (only if enabled)
 const queues = {};
 
+/*
 if (QUEUES_ENABLED) {
   try {
     queues.cdrProcessing = new Queue(QUEUE_NAMES.CDR_PROCESSING, queueConfig);
@@ -52,8 +55,10 @@ if (QUEUES_ENABLED) {
 } else {
   logger.info('Bull queues disabled via ENABLE_QUEUES=false');
 }
+*/
 
 // Queue event handlers
+/*
 Object.entries(queues).forEach(([name, queue]) => {
   queue.on('error', (error) => {
     logger.error(`Queue ${name} error:`, error);
@@ -79,6 +84,7 @@ Object.entries(queues).forEach(([name, queue]) => {
     logger.warn(`Queue ${name}: Job ${job.id} has stalled`);
   });
 });
+*/
 
 /**
  * Add job to queue
