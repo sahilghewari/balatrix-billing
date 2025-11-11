@@ -28,6 +28,7 @@ const redisConfig = {
 // Create Redis client conditionally
 let redisClient = null;
 
+/*
 if (REDIS_ENABLED) {
   try {
     redisClient = new Redis(redisConfig);
@@ -60,6 +61,7 @@ if (REDIS_ENABLED) {
 } else {
   logger.info('Redis disabled via ENABLE_REDIS=false - caching features will be unavailable');
 }
+*/
 
 // Helper functions for common Redis operations
 

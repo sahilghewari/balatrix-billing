@@ -22,7 +22,7 @@ const {
 const { SECURITY, USER_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { generateDeviceFingerprint, generateReferenceNumber } = require('../utils/helpers');
-const { redisClient } = require('../config/redis');
+// const { redisClient } = require('../config/redis');
 
 class AuthService {
   /**

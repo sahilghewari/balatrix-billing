@@ -39,15 +39,15 @@ const gracefulShutdown = async (signal) => {
 
   try {
     const { sequelize } = require('../config/database');
-    const { redisClient } = require('../config/redis');
+    // const { redisClient } = require('../config/redis');
 
     // Close database
     await sequelize.close();
     logger.info('Worker: Database connection closed');
 
     // Close Redis
-    await redisClient.quit();
-    logger.info('Worker: Redis connection closed');
+    // await redisClient.quit();
+    // logger.info('Worker: Redis connection closed');
 
     logger.info('Worker: Graceful shutdown completed');
     process.exit(0);

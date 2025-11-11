@@ -349,6 +349,7 @@ const healthCheck = async (sequelize, redisClient) => {
   }
 
   // Check Redis
+  /*
   try {
     await redisClient.ping();
     health.services.redis = 'healthy';
@@ -357,6 +358,7 @@ const healthCheck = async (sequelize, redisClient) => {
     health.status = 'degraded';
     logger.error('Redis health check failed', { error: error.message });
   }
+  */
 
   return health;
 };
