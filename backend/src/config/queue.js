@@ -34,7 +34,7 @@ const queueConfig = {
 };
 */
 
-// Create queues (only if enabled)
+// Create queues (only if enablede)
 const queues = {};
 
 /*
