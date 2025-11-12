@@ -394,11 +394,11 @@ const CheckoutPage = () => {
                     <div className="mt-3 pt-2 border-t border-gray-200 text-sm text-gray-600">
                       <div className="flex justify-between">
                         <span>Total Setup Cost:</span>
-                        <span>₹{selectedNumbers.reduce((sum, num) => sum + (num.setupCost || 0), 0)}</span>
+                        <span>₹{selectedNumbers.reduce((sum, num) => sum + parseFloat(num.setupCost || 0), 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Total Monthly Cost:</span>
-                        <span>₹{selectedNumbers.reduce((sum, num) => sum + num.monthlyCost, 0)}</span>
+                        <span>₹{selectedNumbers.reduce((sum, num) => sum + parseFloat(num.monthlyCost || 0), 0).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

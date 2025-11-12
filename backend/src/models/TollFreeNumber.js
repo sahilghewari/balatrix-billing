@@ -38,6 +38,11 @@ const TollFreeNumber = sequelize.define(
       allowNull: false,
       defaultValue: 0.00,
     },
+    setupCost: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+    },
     perMinuteCost: {
       type: DataTypes.DECIMAL(10, 4),
       allowNull: false,

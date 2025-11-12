@@ -53,6 +53,15 @@ class AuthService {
       isEmailVerified: false,
     });
 
+    // Generate device fingerprint for token
+    const deviceFingerprint = generateDeviceFingerprint({
+      ip: ipAddress,
+      headers: { 'user-agent': userAgent },
+    });
+
+    // Generate tokens
+    const tokens = await this.generateTokens(user, deviceFingerprint, ipAddress, userAgent);
+
     // Log registration
     logger.info('User registered', {
       userId: user.id,
@@ -77,6 +86,7 @@ class AuthService {
 
     return {
       user: user.toJSON(),
+      ...tokens,
       message: 'Registration successful. Please verify your email.',
     };
   }

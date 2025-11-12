@@ -24,7 +24,23 @@ exports.register = asyncHandler(async (req, res) => {
     req.get('user-agent')
   );
 
-  return createdResponse(res, result.user, result.message);
+  // Set refresh token as httpOnly cookie
+  res.cookie('refreshToken', result.refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  return createdResponse(
+    res,
+    {
+      user: result.user,
+      accessToken: result.accessToken,
+      expiresIn: result.expiresIn,
+    },
+    result.message
+  );
 });
 
 /**

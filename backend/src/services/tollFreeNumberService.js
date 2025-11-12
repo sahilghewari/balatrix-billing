@@ -29,7 +29,7 @@ class TollFreeNumberService {
         limit,
         offset,
         order: [['number', 'ASC']],
-        attributes: ['id', 'number', 'monthlyCost', 'perMinuteCost'],
+        attributes: ['id', 'number', 'monthlyCost', 'setupCost', 'perMinuteCost'],
       });
 
       const total = await TollFreeNumber.count({ where: whereClause });

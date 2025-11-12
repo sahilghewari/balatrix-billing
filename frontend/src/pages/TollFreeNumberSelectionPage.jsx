@@ -269,7 +269,7 @@ const TollFreeNumberSelectionPage = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Setup Cost:</span>
-                      <span className="font-medium">₹{number.setupCost}</span>
+                      <span className="font-medium">₹0.00</span>
                     </div>
                   </div>
                 </Card>
