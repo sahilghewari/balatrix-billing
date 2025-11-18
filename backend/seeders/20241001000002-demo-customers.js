@@ -71,6 +71,7 @@ module.exports = {
       {
         id: demoCustomer1Id,
         userId: demoUser1Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         companyName: null,
         businessType: 'individual',
         gstin: null,
@@ -91,6 +92,7 @@ module.exports = {
       {
         id: demoCustomer2Id,
         userId: demoUser2Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         companyName: 'Smith Consulting',
         businessType: 'small_business',
         gstin: '29ABCDE1234F1Z5',
@@ -111,6 +113,7 @@ module.exports = {
       {
         id: demoCustomer3Id,
         userId: demoUser3Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         companyName: 'Acme Corporation',
         businessType: 'enterprise',
         gstin: '07ABCDE1234F1Z5',
@@ -139,6 +142,7 @@ module.exports = {
       {
         id: demoAccount1Id,
         customerId: demoCustomer1Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         accountNumber: 'ACC-10001',
         accountType: 'prepaid',
         balance: 500.00,
@@ -156,6 +160,7 @@ module.exports = {
       {
         id: demoAccount2Id,
         customerId: demoCustomer2Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         accountNumber: 'ACC-10002',
         accountType: 'prepaid',
         balance: 2000.00,
@@ -175,6 +180,7 @@ module.exports = {
       {
         id: demoAccount3Id,
         customerId: demoCustomer3Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         accountNumber: 'ACC-10003',
         accountType: 'postpaid',
         balance: 0,
@@ -209,8 +215,9 @@ module.exports = {
       {
         id: uuidv4(),
         customerId: demoCustomer1Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         accountId: demoAccount1Id,
-        ratePlanId: starterPlan.id,
+        planId: starterPlan.id,
         subscriptionNumber: 'SUB-10001',
         status: 'active',
         billingCycle: 'monthly',
@@ -227,8 +234,9 @@ module.exports = {
       {
         id: uuidv4(),
         customerId: demoCustomer2Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         accountId: demoAccount2Id,
-        ratePlanId: professionalPlan.id,
+        planId: professionalPlan.id,
         subscriptionNumber: 'SUB-10002',
         status: 'active',
         billingCycle: 'annual',
@@ -245,8 +253,9 @@ module.exports = {
       {
         id: uuidv4(),
         customerId: demoCustomer3Id,
+        tenantId: '5a98f0ca-b2ef-478a-8d7c-85e6f61aa7ea',
         accountId: demoAccount3Id,
-        ratePlanId: callCenterPlan.id,
+        planId: callCenterPlan.id,
         subscriptionNumber: 'SUB-10003',
         status: 'active',
         billingCycle: 'monthly',

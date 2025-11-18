@@ -21,7 +21,7 @@ const extensionService = {
   // Get current user's extensions
   getMyExtensions: async () => {
     const response = await axios.get('/extensions/my-extensions');
-    return response.data;
+    return response;
   },
 
   // Create new extension

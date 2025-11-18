@@ -14,9 +14,11 @@ const RoutingPage = () => {
 
   const [numbers, setNumbers] = useState([]);
   const [extensions, setExtensions] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingFor, setSavingFor] = useState(null);
   const [selectedMap, setSelectedMap] = useState({});
+  const [templateMap, setTemplateMap] = useState({});
   const [savedMap, setSavedMap] = useState({});
 
   useEffect(() => {
@@ -28,18 +30,24 @@ const RoutingPage = () => {
       setLoading(true);
       const numsRes = await tollFreeNumberService.getMyNumbers();
       const exRes = await extensionService.getMyExtensions();
+      const tempRes = await routingService.getTemplates();
   const myNumbers = numsRes.data || [];
-  const myExts = exRes.data || exRes || [];
+  const myExts = exRes.data || [];
+  const myTemplates = tempRes.data || [];
 
       setNumbers(myNumbers);
       setExtensions(myExts);
+      setTemplates(myTemplates);
 
       // Initialize selected map with existing forwardToExtension if present
       const initialMap = {};
+      const initialTemplateMap = {};
       myNumbers.forEach((n) => {
         if (n.config && n.config.forwardToExtension) initialMap[n.id] = n.config.forwardToExtension;
+        if (n.config && n.config.template) initialTemplateMap[n.id] = n.config.template;
       });
       setSelectedMap(initialMap);
+      setTemplateMap(initialTemplateMap);
       // Initialize saved map timestamps as null
       const initialSaved = {};
       myNumbers.forEach((n) => {
@@ -63,28 +71,42 @@ const RoutingPage = () => {
     setSelectedMap((m) => ({ ...m, [numberId]: ext }));
   };
 
+  const handleTemplateSelect = (numberId, template) => {
+    console.log('[RoutingPage] select template', { numberId, template });
+    setTemplateMap((m) => ({ ...m, [numberId]: template }));
+  };
+
   const handleSave = async (numberId) => {
     const ext = selectedMap[numberId];
-    if (!ext) {
+    const template = templateMap[numberId] || 'incoming_generic';
+    const templateInfo = templates.find(t => t.id === template);
+    
+    if (templateInfo?.placeholders.includes('extension') && !ext) {
       toast.error('Please select an extension first');
       return;
     }
+    
     // If the selection matches current mapping, skip
     const current = numbers.find((n) => n.id === numberId)?.config?.forwardToExtension;
-    if (current === ext) {
+    const currentTemplate = numbers.find((n) => n.id === numberId)?.config?.template || 'incoming_generic';
+    const extChanged = templateInfo?.placeholders.includes('extension') ? (current !== ext) : false;
+    const templateChanged = currentTemplate !== template;
+    
+    if (!extChanged && !templateChanged) {
       toast('No changes to save');
       return;
     }
+    
     try {
-      console.log('[RoutingPage] saving mapping', { numberId, extension: ext });
+      console.log('[RoutingPage] saving mapping', { numberId, extension: ext, template });
       setSavingFor(numberId);
-      const result = await routingService.setMapping(numberId, ext);
+      const result = await routingService.setMapping(numberId, ext, template);
       console.log('[RoutingPage] setMapping result', result);
       toast.success('Routing saved');
   // Mark as saved using server timestamp if available, else now
   const serverTs = result?.tollFreeNumber?.updatedAt ? new Date(result.tollFreeNumber.updatedAt).getTime() : Date.now();
   setSavedMap((s) => ({ ...s, [numberId]: serverTs }));
-  setNumbers((list) => list.map((n) => (n.id === numberId ? { ...n, config: { ...(n.config || {}), forwardToExtension: ext }, updatedAt: result?.tollFreeNumber?.updatedAt || n.updatedAt } : n)));
+  setNumbers((list) => list.map((n) => (n.id === numberId ? { ...n, config: { ...(n.config || {}), forwardToExtension: ext, template }, updatedAt: result?.tollFreeNumber?.updatedAt || n.updatedAt } : n)));
       // refresh backend-backed data in background
       fetchData();
     } catch (error) {
@@ -141,26 +163,61 @@ const RoutingPage = () => {
                   <div className="mb-3 text-sm">
                     <span className="font-medium text-gray-700">Currently forwarding to:</span>
                     <span className="ml-2 text-green-700 font-semibold">{num.config.forwardToExtension}</span>
+                    {num.config?.template && (
+                      <span className="ml-2 text-xs text-blue-600">({templates.find(t => t.id === num.config.template)?.name || num.config.template})</span>
+                    )}
                     {savedMap[num.id] ? (
                       <span className="ml-3 text-xs text-green-600">Saved ✓ {new Date(savedMap[num.id]).toLocaleTimeString()}</span>
                     ) : null}
                   </div>
                 )}
 
-                <label className="block text-sm font-medium text-gray-700 mb-2">Forward to extension</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Dialplan Template</label>
                 <select
-                  value={selectedMap[num.id] || ''}
-                  onChange={(e) => handleSelect(num.id, e.target.value)}
+                  value={templateMap[num.id] || 'incoming_generic'}
+                  onChange={(e) => handleTemplateSelect(num.id, e.target.value)}
                   className="w-full border rounded p-2 mb-4"
+                  disabled={templates.length === 0}
                 >
-                  <option value="">-- Select extension --</option>
-                  {extensions.map((ex) => (
-                    <option key={ex.id} value={ex.extension}>{ex.extension} {ex.displayName ? `- ${ex.displayName}` : ''}</option>
-                  ))}
+                  {templates.length === 0 ? (
+                    <option value="">Loading templates...</option>
+                  ) : (
+                    templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name} - {template.description}
+                      </option>
+                    ))
+                  )}
                 </select>
 
+                <label className="block text-sm font-medium text-gray-700 mb-2">Forward to extension</label>
+                {templates.find(t => t.id === (templateMap[num.id] || 'incoming_generic'))?.placeholders.includes('extension') ? (
+                  <select
+                    value={selectedMap[num.id] || ''}
+                    onChange={(e) => handleSelect(num.id, e.target.value)}
+                    className="w-full border rounded p-2 mb-4"
+                  >
+                    <option value="">-- Select extension --</option>
+                    {extensions.map((ex) => (
+                      <option key={ex.id} value={ex.extension}>{ex.extension} {ex.displayName ? `- ${ex.displayName}` : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full border rounded p-2 mb-4 bg-gray-50 text-gray-500 text-sm">
+                    This template does not require extension selection
+                  </div>
+                )}
+
                 <div className="flex space-x-2">
-                  <Button onClick={() => handleSave(num.id)} disabled={savingFor === num.id || (numbers.find((n) => n.id === num.id)?.config?.forwardToExtension === selectedMap[num.id])}>
+                  <Button onClick={() => handleSave(num.id)} disabled={savingFor === num.id || (() => {
+                    const template = templateMap[num.id] || 'incoming_generic';
+                    const templateInfo = templates.find(t => t.id === template);
+                    const current = numbers.find((n) => n.id === num.id)?.config?.forwardToExtension;
+                    const currentTemplate = numbers.find((n) => n.id === num.id)?.config?.template || 'incoming_generic';
+                    const extChanged = templateInfo?.placeholders.includes('extension') ? (current !== selectedMap[num.id]) : false;
+                    const templateChanged = currentTemplate !== template;
+                    return !extChanged && !templateChanged;
+                  })()}>
                     {savingFor === num.id ? 'Saving...' : 'Save'}
                   </Button>
                 </div>

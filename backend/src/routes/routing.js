@@ -1,10 +1,25 @@
 const express = require('express');
 const router = express.Router();
 
-const { TollFreeNumber, RoutingRule, Extension, Customer } = require('../models');
+const { TollFreeNumber, RoutingRule, Extension, Customer, DialplanXml } = require('../models');
 const { authenticate } = require('../middleware/auth');
 const { successResponse, errorResponse, forbiddenResponse, notFoundResponse } = require('../utils/responseHandler');
 const logger = require('../utils/logger');
+const { generateXmlFromTemplate, getAllTemplates } = require('../utils/dialplanTemplates');
+
+/**
+ * Get available dialplan templates
+ * GET /api/routing/templates
+ */
+router.get('/templates', (req, res) => {
+	try {
+		const templates = getAllTemplates();
+		return successResponse(res, templates, 'Templates retrieved successfully');
+	} catch (error) {
+		logger.logError(error, { context: 'Routing.getTemplates' });
+		return errorResponse(res, 'Failed to retrieve templates');
+	}
+});
 
 /**
  * Resolve routing for an inbound call
@@ -83,7 +98,7 @@ router.post('/resolve', async (req, res) => {
 /**
  * Customer/tenant-scoped mapping setter
  * Set a simple extension-forward mapping for a toll-free number.
- * Body: { extension: '100101' }
+ * Body: { extension: '100101', template: 'incoming_generic' }
  */
 router.post('/toll-free-numbers/:id/route', authenticate, async (req, res) => {
 	try {
@@ -92,7 +107,7 @@ router.post('/toll-free-numbers/:id/route', authenticate, async (req, res) => {
 		logger.info('Routing.setMapping.payload', { params: req.params, body: req.body, userId: req.userId, userRole: req.userRole });
 
 		const id = req.params.id;
-		const { extension } = req.body;
+		const { extension, template = 'incoming_generic' } = req.body;
 
 		if (!extension) {
 			logger.warn('Routing.setMapping.missing_extension', { id, body: req.body });
@@ -157,8 +172,28 @@ router.post('/toll-free-numbers/:id/route', authenticate, async (req, res) => {
 		}
 
 		// Also update quick config for easier testing compatibility
-		tfn.config = { ...(tfn.config || {}), forwardToExtension: extension };
+		tfn.config = { ...(tfn.config || {}), forwardToExtension: extension, template };
 		await tfn.save();
+
+		// Generate and save FreeSWITCH dialplan XML using selected template
+		try {
+			const replacements = {};
+			const templateInfo = require('../utils/dialplanTemplates').getTemplate(template);
+			if (templateInfo.placeholders.includes('extension')) {
+				replacements.extension = extension;
+			}
+			const xmlContent = generateXmlFromTemplate(template, replacements);
+			await DialplanXml.upsertByNumber(
+				BigInt(tfn.number.replace(/^\+/, '')), // Remove + if present
+				template,
+				xmlContent,
+				`Routing for ${tfn.number} using template ${template}${replacements.extension ? ` to extension ${extension}` : ''}`
+			);
+			logger.info('Routing.setMapping.xml_saved', { dialplanId: BigInt(tfn.number.replace(/^\+/, '')), template, extension: replacements.extension });
+		} catch (err) {
+			logger.logError(err, { context: 'Routing.setMapping.XmlSave' });
+			// Don't fail the whole request if XML save fails
+		}
 
 		logger.info('Routing.setMapping.completed', { tfnId: tfn.id, ruleId: rule?.id || null });
 		return successResponse(res, { rule: rule || null, tollFreeNumber: tfn }, 'Routing mapping saved (config updated)');

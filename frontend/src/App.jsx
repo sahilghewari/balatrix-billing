@@ -142,6 +142,16 @@ function App() {
             }
           />
           
+          {/* Call Routing - Private */}
+          <Route
+            path="/routing"
+            element={
+              <PrivateRoute>
+                <RoutingPage />
+              </PrivateRoute>
+            }
+          />
+          
           {/* Extension Management - Private */}
           <Route
             path="/extensions/manage"

@@ -195,6 +195,7 @@ const TollFreeNumberManagementPage = () => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    onClick={() => navigate('/routing')}
                     disabled={unassigning === number.id}
                   >
                     <Phone className="w-4 h-4 mr-2" />

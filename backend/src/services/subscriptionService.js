@@ -1398,11 +1398,16 @@ class SubscriptionService {
           }
         }
       }
-    });    // Get extensions count
+    });    // Get extensions count - only count extensions assigned to this customer's subscriptions
     const extensionsCount = await Extension.count({
       where: {
         tenantId: customer.tenantId,
-        isActive: true
+        isActive: true,
+        config: {
+          subscriptionId: {
+            [Sequelize.Op.in]: subscriptionIds
+          }
+        }
       },
     });
 
@@ -1672,18 +1677,15 @@ class SubscriptionService {
         await subscription.save({ transaction });
       }
 
-      // Ensure we assign at least the included numbers for the plan
-      if (numbersToAssign.length < includedTollFreeNumbers && includedTollFreeNumbers > 0) {
-        const additionalNeeded = includedTollFreeNumbers - numbersToAssign.length;
+      // Only auto-assign numbers if no numbers were explicitly selected
+      // If user selected numbers, respect their choice and don't auto-assign additional ones
+      if (numbersArray.length === 0 && includedTollFreeNumbers > 0) {
+        const additionalNeeded = includedTollFreeNumbers;
 
-        // Auto-assign additional numbers from available pool
+        // Auto-assign included numbers from available pool
         const TollFreeNumber = require('../models').TollFreeNumber;
-        const alreadyAssignedIds = numbersToAssign.map(n => n.id);
         const availableNumbers = await TollFreeNumber.findAll({
-          where: {
-            status: 'active',
-            id: { [require('sequelize').Op.notIn]: alreadyAssignedIds }
-          },
+          where: { status: 'active' },
           limit: additionalNeeded,
           order: [['number', 'ASC']],
           transaction,

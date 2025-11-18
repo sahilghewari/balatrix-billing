@@ -27,6 +27,7 @@ const Extension = require('./Extension');
 const KamailioExtension = require('./KamailioExtension');
 const TollFreeNumber = require('./TollFreeNumber');
 const RoutingRule = require('./RoutingRule');
+const DialplanXml = require('./DialplanXml');
 
 // Define associations
 
@@ -179,4 +180,5 @@ module.exports = {
   KamailioExtension,
   TollFreeNumber,
   RoutingRule,
+  DialplanXml,
 };
