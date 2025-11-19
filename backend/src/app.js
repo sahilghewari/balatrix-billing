@@ -16,6 +16,7 @@ const logger = require('./utils/logger');
 const { sequelize, testConnection, syncDatabase } = require('./config/database');
 const { redisClient } = require('./config/redis');
 const sentry = require('./config/sentry');
+const CallMonitoringServer = require('./freeswitch/call-monitoring-server');
 
 // Middleware
 const { requestLogger } = require('./middleware/logging');
@@ -44,6 +45,7 @@ const tenantRoutes = require('./routes/tenants');
 const extensionRoutes = require('./routes/extensions');
 const tollFreeNumberRoutes = require('./routes/tollFreeNumbers');
 const routingRoutes = require('./routes/routing');
+const callMonitoringRoutes = require('./routes/callMonitoring');
 
 // Initialize Express app
 const app = express();
@@ -168,6 +170,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/extensions', extensionRoutes);
 app.use('/api/toll-free-numbers', tollFreeNumberRoutes);
 app.use('/api/routing', routingRoutes);
+app.use('/api/call-monitoring', callMonitoringRoutes.router);
 
 /**
  * Welcome route
@@ -329,11 +332,28 @@ const startServer = async () => {
 
     // Start Express server
     logger.info(`Step 3: Starting Express server on port ${PORT}...`);
-    server = app.listen(PORT, () => {
+    server = app.listen(PORT, async () => {
       logger.info(`✅ Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
       logger.info(`✅ Health check: http://localhost:${PORT}/health`);
       logger.info(`✅ Metrics endpoint: http://localhost:${PORT}/metrics`);
       logger.info(`✅ API base URL: http://localhost:${PORT}/api`);
+      
+      // Initialize call monitoring server
+      logger.info('Step 4: Starting call monitoring server...');
+      try {
+        const monitoringServer = new CallMonitoringServer(server);
+        await monitoringServer.start();
+        
+        // Set the server instance in routes for API access
+        callMonitoringRoutes.setCallMonitoringServer(monitoringServer);
+        
+        logger.info('✅ Call monitoring server started');
+        logger.info(`✅ WebSocket endpoint: ws://localhost:${PORT}/socket.io/call-monitoring`);
+      } catch (error) {
+        logger.error('❌ Failed to start call monitoring server:', error);
+        // Don't fail the entire server startup
+      }
+      
       logger.info(`🚀 Server is ready to accept connections!`);
     });
   } catch (error) {

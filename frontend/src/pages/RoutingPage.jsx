@@ -31,9 +31,9 @@ const RoutingPage = () => {
       const numsRes = await tollFreeNumberService.getMyNumbers();
       const exRes = await extensionService.getMyExtensions();
       const tempRes = await routingService.getTemplates();
-  const myNumbers = numsRes.data || [];
-  const myExts = exRes.data || [];
-  const myTemplates = tempRes.data || [];
+  const myNumbers = numsRes || [];
+  const myExts = exRes || [];
+  const myTemplates = tempRes || [];
 
       setNumbers(myNumbers);
       setExtensions(myExts);

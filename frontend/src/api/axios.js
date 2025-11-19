@@ -18,9 +18,13 @@ const axiosInstance = axios.create({
 // Request interceptor - Add auth token to requests
 axiosInstance.interceptors.request.use(
   (config) => {
+    console.log('Making request to:', config.url, 'with method:', config.method);
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Added auth token');
+    } else {
+      console.log('No auth token found');
     }
     return config;
   },
@@ -33,6 +37,7 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => {
     // Return the data directly for successful responses
+    console.log('Response received:', response.status, response.data);
     return response.data;
   },
   async (error) => {

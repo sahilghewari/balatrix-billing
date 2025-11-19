@@ -28,6 +28,8 @@ import TenantForm from './pages/TenantForm';
 import ExtensionForm from './pages/ExtensionForm';
 import ExtensionManagementPage from './pages/ExtensionManagementPage';
 import RoutingPage from './pages/RoutingPage';
+import CallMonitoringPage from './pages/CallMonitoringPage';
+import CustomerCallMonitoringPage from './pages/CustomerCallMonitoringPage';
 import './App.css';
 
 function App() {
@@ -161,7 +163,17 @@ function App() {
               </PrivateRoute>
             }
           />
-          
+
+          {/* Customer Call Monitoring - Private */}
+          <Route
+            path="/calls/monitor"
+            element={
+              <PrivateRoute>
+                <CustomerCallMonitoringPage />
+              </PrivateRoute>
+            }
+          />
+
           {/* Checkout Page - Private */}
           <Route
             path="/checkout"
@@ -250,6 +262,14 @@ function App() {
             element={
               <AdminRoute>
                 <ExtensionsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/call-monitoring"
+            element={
+              <AdminRoute>
+                <CallMonitoringPage />
               </AdminRoute>
             }
           />

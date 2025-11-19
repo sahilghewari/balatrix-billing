@@ -85,6 +85,13 @@ const DashboardPage = () => {
       color: 'bg-green-500',
     },
     {
+      title: 'Call Monitoring',
+      description: 'Monitor calls to your toll-free numbers',
+      icon: PhoneCall,
+      action: () => navigate('/calls/monitor'),
+      color: 'bg-red-500',
+    },
+    {
       title: 'View Usage Reports',
       description: 'Check your call usage and billing',
       icon: BarChart3,

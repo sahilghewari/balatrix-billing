@@ -59,6 +59,10 @@ Subscription.belongsTo(Account, { foreignKey: 'accountId', as: 'account' });
 RatePlan.hasMany(Subscription, { foreignKey: 'planId', as: 'subscriptions' });
 Subscription.belongsTo(RatePlan, { foreignKey: 'planId', as: 'plan' });
 
+// Tenant <-> Subscription (One-to-Many)
+Tenant.hasMany(Subscription, { foreignKey: 'tenantId', as: 'subscriptions' });
+Subscription.belongsTo(Tenant, { foreignKey: 'tenantId', as: 'tenant' });
+
 // Subscription <-> SubscriptionUsage (One-to-Many)
 Subscription.hasMany(SubscriptionUsage, { foreignKey: 'subscriptionId', as: 'usageRecords' });
 SubscriptionUsage.belongsTo(Subscription, { foreignKey: 'subscriptionId', as: 'subscription' });

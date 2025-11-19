@@ -54,7 +54,7 @@ const tollFreeNumberService = {
    */
   getMyNumbers: async () => {
     const response = await axios.get('/toll-free-numbers/my-numbers');
-    return response;
+    return response.data;
   },
 
   /**

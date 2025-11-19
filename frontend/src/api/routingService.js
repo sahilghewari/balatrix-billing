@@ -10,7 +10,7 @@ const routingService = {
    */
   getTemplates: async () => {
     const response = await axios.get('/routing/templates');
-    return response;
+    return response.data;
   },
 
   /**

@@ -192,6 +192,7 @@ export const API_ENDPOINTS = {
   WEBSOCKET: {
     CONNECT: '/ws',
     CALLS: '/ws/calls',
+    CALL_MONITORING: '/socket.io/call-monitoring',
   },
 
   // Analytics & Reports

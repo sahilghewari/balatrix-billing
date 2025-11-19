@@ -4,15 +4,8 @@
  */
 
 const Sentry = require('@sentry/node');
-let ProfilingIntegration;
-if (process.env.NODE_ENV !== 'test') {
-  try {
-    ProfilingIntegration = require('@sentry/profiling-node').ProfilingIntegration;
-  } catch (error) {
-    // Profiling not available (e.g., unsupported Node.js version)
-    console.warn('Sentry profiling not available:', error.message);
-  }
-}
+// Disable profiling for now due to platform issues
+const ProfilingIntegration = null;
 const logger = require('../utils/logger');
 
 /**

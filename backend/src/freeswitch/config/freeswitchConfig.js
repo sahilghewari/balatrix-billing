@@ -6,9 +6,9 @@
 module.exports = {
   // ESL Connection Settings
   esl: {
-    host: process.env.FREESWITCH_HOST || '127.0.0.1',
-    port: parseInt(process.env.FREESWITCH_PORT) || 8021,
-    password: process.env.FREESWITCH_PASSWORD || 'ClueCon',
+    host: process.env.FREESWITCH_ESL_HOST ,
+    port: parseInt(process.env.FREESWITCH_ESL_PORT) || 8021,
+    password: process.env.FREESWITCH_ESL_PASSWORD || 'ClueCon',
     
     // Connection Pool Settings
     pool: {

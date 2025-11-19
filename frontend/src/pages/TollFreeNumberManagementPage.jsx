@@ -47,7 +47,7 @@ const TollFreeNumberManagementPage = () => {
     try {
       setLoading(true);
       const response = await tollFreeNumberService.getMyNumbers();
-      setNumbers(response.data || []);
+      setNumbers(response || []);
     } catch (error) {
       console.error('Error fetching customer numbers:', error);
       toast.error('Failed to load toll-free numbers');

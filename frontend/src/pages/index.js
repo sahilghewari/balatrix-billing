@@ -18,3 +18,5 @@ export { default as TollFreeNumberSelectionPage } from './TollFreeNumberSelectio
 export { default as TollFreeNumberManagementPage } from './TollFreeNumberManagementPage';
 export { default as ExtensionManagementPage } from './ExtensionManagementPage';
 export { default as RoutingPage } from './RoutingPage';
+export { default as CallMonitoringPage } from './CallMonitoringPage';
+export { default as CustomerCallMonitoringPage } from './CustomerCallMonitoringPage';
